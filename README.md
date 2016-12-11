@@ -13,7 +13,12 @@ Task states
 - Green with red border: *preparing*
 - Gray: *allocated*
 
-Why tasks and not containers?
+#### Why tasks and not containers?
+There is an event stream one can subscribe to from the Docker Remote API that provides live updates of the state of services and containers. However, that stream only includes changes occurring on the same Swarm Node that is providing the docker.sock to the subscriber. 
+
+Since dvizz requires us to run on the Swarm Manager, using /events stream would effectively make us miss all events emitted from other nodes in the Swarm. Since queries for *nodes, *services* and *tasks* over the docker.sock returns the global state (i.e. across the whole swarm) we're basing Dvizz on tasks rather than containers.
+
+An option could be to create some kind of "dvizz agent" that would need to run och each node and subscribe to that nodes very own /events channel (given that the worker nodes actually supply that?) and then use some messaging mechanism to collect events to the "dvizz master" for propagation to the GUI.
 
 
 

@@ -25,7 +25,6 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
 	"github.com/ahl5esoft/golang-underscore"
 	"github.com/eriklupander/dvizz/comms"
 	"github.com/fsouza/go-dockerclient"
@@ -92,7 +91,6 @@ func publishNodes(client *docker.Client) {
 		for _, currentNode := range currentNodes {
 			for _, lastNode := range lastNodes {
 				if currentNode.Id == lastNode.Id && currentNode.State != lastNode.State {
-					fmt.Printf("Broadcasting Node update: Current: %v, Last: %v \n", currentNode, lastNode)
 					comms.AddEventToSendQueue(marshal(DNodeEvent{Action: "update", Type: "node", Dnode: currentNode}))
 				}
 			}
@@ -103,7 +101,7 @@ func publishNodes(client *docker.Client) {
 }
 
 /**
- * Will poll for Swarm service changes every 5 seconds.
+ * Will poll for Swarm service changes every second.
  */
 func publishServices(client *docker.Client) {
 	services, _ := client.ListServices(docker.ListServicesOptions{})
@@ -140,11 +138,9 @@ func publishServices(client *docker.Client) {
 		// Finally, serialize to JSON and push as events
 		go underscore.Each(toAdd, func(item DService, _ int) {
 			comms.AddEventToSendQueue(marshal(&DServiceEvent{DService: item, Action: "start", Type: "service"}))
-			//time.Sleep(time.Millisecond * 100)
 		})
 		go underscore.Each(toDelete, func(item DService, _ int) {
 			comms.AddEventToSendQueue(marshal(&DServiceEvent{DService: item, Action: "stop", Type: "service"}))
-			//time.Sleep(time.Millisecond * 100)
 		})
 
 		lastServices = currentServices // Assign current as last for next iteration.
@@ -186,7 +182,6 @@ func publishTasks(client *docker.Client) {
 					// We have a status change for a task,
 					go func(currentTask DTask) {
 						// Wait about .5 second until sending status updates for state changes.
-						//time.Sleep(time.Millisecond * 500)
 						comms.AddEventToSendQueue(marshal(&DTaskStateUpdate{Id: currentTask.Id, State: currentTask.Status, Action: "update", Type: "task"}))
 					}(currentTask)
 				}
@@ -196,11 +191,9 @@ func publishTasks(client *docker.Client) {
 		// Finally, serialize to JSON and push as events
 		go underscore.Each(toAdd, func(item DTask, _ int) {
 			comms.AddEventToSendQueue(marshal(&DEvent{Dtask: item, Action: "start", Type: "task"}))
-			//time.Sleep(time.Millisecond * 100)
 		})
 		go underscore.Each(toDelete, func(item DTask, _ int) {
 			comms.AddEventToSendQueue(marshal(&DEvent{Dtask: item, Action: "stop", Type: "task"}))
-			//time.Sleep(time.Millisecond * 100)
 		})
 
 		lastTasks = currentTasks // Assign current as last for next iteration.
