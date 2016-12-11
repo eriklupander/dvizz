@@ -27,12 +27,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/ahl5esoft/golang-underscore"
+	"github.com/eriklupander/dvizz/comms"
 	"github.com/fsouza/go-dockerclient"
 	"sync"
 	"time"
 )
-
-var client *docker.Client
 
 var filters = make(map[string][]string)
 
@@ -40,17 +39,17 @@ func main() {
 
 	filters["desired-state"] = []string{"running"}
 
-	go StartWsServer()
-
 	endpoint := "unix:///var/run/docker.sock"
 	client, err := docker.NewClient(endpoint)
 	if err != nil {
 		panic(err)
 	}
 
+	go comms.InitializeEventSystem(client)
+
 	go publishTasks(client)
 	go publishServices(client)
-        go publishNodes(client)
+	go publishNodes(client)
 
 	// Block...
 	wg := sync.WaitGroup{} // Use a WaitGroup to block main() exit
@@ -63,52 +62,51 @@ func main() {
  */
 func publishNodes(client *docker.Client) {
 	tmp, _ := client.ListNodes(docker.ListNodesOptions{})
-        lastNodes := convNodes(tmp)
-        for {
-                time.Sleep(time.Second * 5)
-                tmp2, _ := client.ListNodes(docker.ListNodesOptions{})
-                currentNodes := convNodes(tmp2)
+	lastNodes := convNodes(tmp)
+	for {
+		time.Sleep(time.Second * 5)
+		tmp2, _ := client.ListNodes(docker.ListNodesOptions{})
+		currentNodes := convNodes(tmp2)
 
-                // Broadcasts stop events for nodes gone missing
-                for _, lastNode := range lastNodes {
-                        isThere := underscore.Any(currentNodes, func(other DObject, _ int) bool {
-                                return other.Equals(lastNode)
-                        })
-                        if !isThere {
-                                BroadcastDEvent(marshal(DNodeEvent{Action:"stop", Type:"node", Dnode: lastNode}))
-                        }
-                }
+		// Broadcasts stop events for nodes gone missing
+		for _, lastNode := range lastNodes {
+			isThere := underscore.Any(currentNodes, func(other DObject, _ int) bool {
+				return other.Equals(lastNode)
+			})
+			if !isThere {
+				comms.AddEventToSendQueue(marshal(DNodeEvent{Action: "stop", Type: "node", Dnode: lastNode}))
+			}
+		}
 
-                // Broadcasts start events for nodes added
-                for _, currentNode := range currentNodes {
-                        isThere := underscore.Any(lastNodes, func(other DObject, _ int) bool {
-                                return other.Equals(currentNode)
-                        })
-                        if !isThere {
-                                BroadcastDEvent(marshal(DNodeEvent{Action:"start", Type:"node", Dnode:currentNode}))
-                        }
-                }
+		// Broadcasts start events for nodes added
+		for _, currentNode := range currentNodes {
+			isThere := underscore.Any(lastNodes, func(other DObject, _ int) bool {
+				return other.Equals(currentNode)
+			})
+			if !isThere {
+				comms.AddEventToSendQueue(marshal(DNodeEvent{Action: "start", Type: "node", Dnode: currentNode}))
+			}
+		}
 
-                // Broadcast status updates
-                for _, currentNode := range currentNodes {
-                        for _, lastNode := range lastNodes {
-                                if currentNode.Id == lastNode.Id && currentNode.State != lastNode.State {
-                                        fmt.Printf("Broadcasting Node update: Current: %v, Last: %v \n", currentNode, lastNode)
-                                        BroadcastDEvent(marshal(DNodeEvent{Action:"update", Type:"node", Dnode: currentNode}))
-                                }
-                        }
-                }
+		// Broadcast status updates
+		for _, currentNode := range currentNodes {
+			for _, lastNode := range lastNodes {
+				if currentNode.Id == lastNode.Id && currentNode.State != lastNode.State {
+					fmt.Printf("Broadcasting Node update: Current: %v, Last: %v \n", currentNode, lastNode)
+					comms.AddEventToSendQueue(marshal(DNodeEvent{Action: "update", Type: "node", Dnode: currentNode}))
+				}
+			}
+		}
 
-                lastNodes = currentNodes
-        }
+		lastNodes = currentNodes
+	}
 }
-
 
 /**
  * Will poll for Swarm service changes every 5 seconds.
  */
 func publishServices(client *docker.Client) {
-        services, _ := client.ListServices(docker.ListServicesOptions{})
+	services, _ := client.ListServices(docker.ListServicesOptions{})
 	lastServices := convServices(services)
 	for {
 		time.Sleep(time.Second * 1)
@@ -120,20 +118,20 @@ func publishServices(client *docker.Client) {
 		// First, check if there are any items in lastTasks NOT present in currentTasks. Keep those in temp list
 		toDelete := []DService{}
 		for _, lastService := range lastServices {
-                        isThere := underscore.Any(currentServices, func(other DObject, _ int) bool {
-                                return other.Equals(lastService)
-                        })
-                        if !isThere {
-                                toDelete = append(toDelete, lastService)
-                        }
+			isThere := underscore.Any(currentServices, func(other DObject, _ int) bool {
+				return other.Equals(lastService)
+			})
+			if !isThere {
+				toDelete = append(toDelete, lastService)
+			}
 		}
 
 		// Then, perform the opposite and populate the toAdd list
 		toAdd := []DService{}
 		for _, currentService := range currentServices {
-                        isThere := underscore.Any(lastServices, func(other DObject, _ int) bool {
-                                return other.Equals(currentService)
-                        })
+			isThere := underscore.Any(lastServices, func(other DObject, _ int) bool {
+				return other.Equals(currentService)
+			})
 			if !isThere {
 				toAdd = append(toAdd, currentService)
 			}
@@ -141,12 +139,12 @@ func publishServices(client *docker.Client) {
 
 		// Finally, serialize to JSON and push as events
 		go underscore.Each(toAdd, func(item DService, _ int) {
-			BroadcastDEvent(marshal(&DServiceEvent{DService: item, Action: "start", Type: "service"}))
-                        //time.Sleep(time.Millisecond * 100)
+			comms.AddEventToSendQueue(marshal(&DServiceEvent{DService: item, Action: "start", Type: "service"}))
+			//time.Sleep(time.Millisecond * 100)
 		})
 		go underscore.Each(toDelete, func(item DService, _ int) {
-			BroadcastDEvent(marshal(&DServiceEvent{DService: item, Action: "stop", Type: "service"}))
-                        //time.Sleep(time.Millisecond * 100)
+			comms.AddEventToSendQueue(marshal(&DServiceEvent{DService: item, Action: "stop", Type: "service"}))
+			//time.Sleep(time.Millisecond * 100)
 		})
 
 		lastServices = currentServices // Assign current as last for next iteration.
@@ -155,7 +153,7 @@ func publishServices(client *docker.Client) {
 
 /** Polls for task changes once per second */
 func publishTasks(client *docker.Client) {
-        tasks, _ := client.ListTasks(docker.ListTasksOptions{Filters: filters})
+	tasks, _ := client.ListTasks(docker.ListTasksOptions{Filters: filters})
 	lastTasks := convTasks(tasks)
 	for {
 		time.Sleep(time.Second * 1)
@@ -180,41 +178,39 @@ func publishTasks(client *docker.Client) {
 			}
 		}
 
-                // We also want state updates propagated to GUI (desiredState != actual state)
-                // Do this by comparing id + state for all
-                for _, currentTask := range currentTasks {
-                        for _, lastTask := range lastTasks {
-                                if (currentTask.Id == lastTask.Id && currentTask.Status != lastTask.Status) {
-                                        // We have a status change for a task,
-                                        go func(currentTask DTask) {
-                                                // Wait about .5 second until sending status updates for state changes.
-                                                //time.Sleep(time.Millisecond * 500)
-                                                BroadcastDEvent(marshal(&DTaskStateUpdate{Id: currentTask.Id, State: currentTask.Status, Action: "update", Type: "task"}))
-                                        }(currentTask)
-                                }
-                        }
-                }
+		// We also want state updates propagated to GUI (desiredState != actual state)
+		// Do this by comparing id + state for all
+		for _, currentTask := range currentTasks {
+			for _, lastTask := range lastTasks {
+				if currentTask.Id == lastTask.Id && currentTask.Status != lastTask.Status {
+					// We have a status change for a task,
+					go func(currentTask DTask) {
+						// Wait about .5 second until sending status updates for state changes.
+						//time.Sleep(time.Millisecond * 500)
+						comms.AddEventToSendQueue(marshal(&DTaskStateUpdate{Id: currentTask.Id, State: currentTask.Status, Action: "update", Type: "task"}))
+					}(currentTask)
+				}
+			}
+		}
 
 		// Finally, serialize to JSON and push as events
 		go underscore.Each(toAdd, func(item DTask, _ int) {
-			BroadcastDEvent(marshal(&DEvent{Dtask: item, Action: "start", Type: "task"}))
-                        //time.Sleep(time.Millisecond * 100)
+			comms.AddEventToSendQueue(marshal(&DEvent{Dtask: item, Action: "start", Type: "task"}))
+			//time.Sleep(time.Millisecond * 100)
 		})
 		go underscore.Each(toDelete, func(item DTask, _ int) {
-			BroadcastDEvent(marshal(&DEvent{Dtask: item, Action: "stop", Type: "task"}))
-                        //time.Sleep(time.Millisecond * 100)
+			comms.AddEventToSendQueue(marshal(&DEvent{Dtask: item, Action: "stop", Type: "task"}))
+			//time.Sleep(time.Millisecond * 100)
 		})
 
 		lastTasks = currentTasks // Assign current as last for next iteration.
 	}
 }
 
-
 func marshal(intf interface{}) []byte {
-        data, _ := json.Marshal(intf)
-        return data
+	data, _ := json.Marshal(intf)
+	return data
 }
-
 
 func contains(arr []DTask, dstruct Identifier) bool {
 
@@ -222,7 +218,3 @@ func contains(arr []DTask, dstruct Identifier) bool {
 		return other.Equals(dstruct)
 	})
 }
-
-
-
-

@@ -414,25 +414,13 @@
           return false;
       }
 
-      var eventQueue = [];
-
-      // Extremely crude event loop. Makes sure we don't screw D3 up by changing to much stuff too quickly...
-      // Runs every 100ms, but seems efficient enough (Chrome uses ~0.2% CPU with this running)
-      setInterval(function() {
-          // Check if there are stuff to do on the eventQueue
-          if (eventQueue.length > 0) {
-              var evt = eventQueue.pop();
-              handleWebSocketMessage(evt);
-          }
-      }, 100);
-
 
       // Start websocket code
       ws = new WebSocket("ws://192.168.99.100:6969/start");
       ws.onmessage = function(e) {
           var evt = JSON.parse(e.data);
           console.log(e.data);
-          eventQueue.push(evt);
+          handleWebSocketMessage(evt);
       };
 
       function handleWebSocketMessage(evt) {

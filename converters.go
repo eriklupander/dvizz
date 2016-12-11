@@ -24,45 +24,45 @@ SOFTWARE.
 package main
 
 import (
-        "github.com/docker/docker/api/types/swarm"
-        "github.com/ahl5esoft/golang-underscore"
-        "strconv"
+	"github.com/ahl5esoft/golang-underscore"
+	"github.com/docker/docker/api/types/swarm"
+	"strconv"
 )
 
 func convNodes(arr []swarm.Node) []DNode {
-        return underscore.Map(arr, toDNode).([]DNode)
+	return underscore.Map(arr, toDNode).([]DNode)
 }
 
 func toDNode(node swarm.Node, _ int) DNode {
-        return DNode{Id:node.ID, State: string(node.Status.State), Name:node.Description.Hostname}
+	return DNode{Id: node.ID, State: string(node.Status.State), Name: node.Description.Hostname}
 }
 
 func convTasks(tasks []swarm.Task) []DTask {
-        v := underscore.Select(tasks, func(task swarm.Task, _ int) bool {
-                // Make sure we only include items that has a nodeId assigned
-                return task.NodeID != ""
-        })
+	v := underscore.Select(tasks, func(task swarm.Task, _ int) bool {
+		// Make sure we only include items that has a nodeId assigned
+		return task.NodeID != ""
+	})
 
-        u := underscore.Map(v, func(task swarm.Task, _ int) DTask {
-                return DTask{
-                        Id:        task.ID,
-                        Name:      task.Spec.ContainerSpec.Image + "." + strconv.Itoa(task.Slot),
-                        Status:    string(task.Status.State),
-                        ServiceId: task.ServiceID,
-                        NodeId:    task.NodeID,
-                }
-        })
-        dtasks, _ := u.([]DTask)
-        return dtasks
+	u := underscore.Map(v, func(task swarm.Task, _ int) DTask {
+		return DTask{
+			Id:        task.ID,
+			Name:      task.Spec.ContainerSpec.Image + "." + strconv.Itoa(task.Slot),
+			Status:    string(task.Status.State),
+			ServiceId: task.ServiceID,
+			NodeId:    task.NodeID,
+		}
+	})
+	dtasks, _ := u.([]DTask)
+	return dtasks
 }
 
 func convServices(services []swarm.Service) []DService {
 
-        u := underscore.Map(services, func(service swarm.Service, _ int) DService {
-                return DService{
-                        Id:   service.ID,
-                        Name: service.Spec.Name,
-                }
-        })
-        return u.([]DService)
+	u := underscore.Map(services, func(service swarm.Service, _ int) DService {
+		return DService{
+			Id:   service.ID,
+			Name: service.Spec.Name,
+		}
+	})
+	return u.([]DService)
 }

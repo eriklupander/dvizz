@@ -24,80 +24,80 @@ SOFTWARE.
 package main
 
 type Identifier interface {
-        GetId() string
+	GetId() string
 }
 
 type DObject interface {
-        Equals(other Identifier) bool
+	Equals(other Identifier) bool
 }
 
 type DEvent struct {
-        Action string `json:"action"` // create or stop or update
-        Type   string `json:"type"`
-        Dtask  DTask  `json:"dtask"`
+	Action string `json:"action"` // create or stop or update
+	Type   string `json:"type"`
+	Dtask  DTask  `json:"dtask"`
 }
 
 type DTaskStateUpdate struct {
-        Action string `json:"action"` // create or stop or update
-        Type   string `json:"type"`   // typically task
-        Id     string `json:"id"`
-        State  string `json:"state"`
+	Action string `json:"action"` // create or stop or update
+	Type   string `json:"type"`   // typically task
+	Id     string `json:"id"`
+	State  string `json:"state"`
 }
 
 type DNode struct {
-        Id string `json:"id"`
-        Name string `json:"name"`
-        State string `json:"state"`
+	Id    string `json:"id"`
+	Name  string `json:"name"`
+	State string `json:"state"`
 }
 
 type DNodeEvent struct {
-        Action string `json:"action"` // create or stop or update
-        Type   string `json:"type"`
-        Dnode  DNode  `json:"dnode"`
+	Action string `json:"action"` // create or stop or update
+	Type   string `json:"type"`
+	Dnode  DNode  `json:"dnode"`
 }
 
 func (d DNode) GetId() string {
-        return d.Id
+	return d.Id
 }
 
 func (d DNode) Equals(d2 Identifier) bool {
-        return d.GetId() == d2.GetId()
+	return d.GetId() == d2.GetId()
 }
 
 type DTask struct {
-        Id        string `json:"id"`
-        Name      string `json:"name"`
-        Status    string `json:"status"`
-        ServiceId string `json:"serviceId"`
-        NodeId    string `json:"nodeId"`
+	Id        string `json:"id"`
+	Name      string `json:"name"`
+	Status    string `json:"status"`
+	ServiceId string `json:"serviceId"`
+	NodeId    string `json:"nodeId"`
 }
 
 func (d DTask) Equals(d2 Identifier) bool {
-        return d.GetId() == d2.GetId()
+	return d.GetId() == d2.GetId()
 }
 
 func (d DTask) GetId() string {
-        return d.Id
+	return d.Id
 }
 
 type DServiceEvent struct {
-        Action   string   `json:"action"` // create or stop or destroy
-        Type     string   `json:"type"`
-        DService DService `json:"dservice"`
+	Action   string   `json:"action"` // create or stop or destroy
+	Type     string   `json:"type"`
+	DService DService `json:"dservice"`
 }
 
 type DService struct {
-        Id   string `json:"id"`
-        Name string `json:"name"`
-        //  Image string  `json:"image"`
+	Id   string `json:"id"`
+	Name string `json:"name"`
+	//  Image string  `json:"image"`
 }
 
 func (d DService) Equals(d2 Identifier) bool {
-        return d.GetId() == d2.GetId()
+	return d.GetId() == d2.GetId()
 }
 
 func (d DService) GetId() string {
-        return d.Id
+	return d.Id
 }
 
 // Asserts

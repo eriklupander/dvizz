@@ -21,7 +21,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
-package main
+package comms
 
 import (
 	"encoding/json"
@@ -31,33 +31,50 @@ import (
 	"log"
 	"net/http"
 	"strconv"
-	"sync"
+	"time"
 )
 
 var upgrader = websocket.Upgrader{} // use default options
 
-func Remove(item int) {
-	connectionRegistry = append(connectionRegistry[:item], connectionRegistry[item+1:]...)
+// Create unbuffered channel
+var eventQueue = make(chan []byte)
+
+// Pointer to docker client
+var client *docker.Client
+
+// Web Socket connection registry (in case we have > 1 dashboards driven by this backend)
+var connectionRegistry = make([]*websocket.Conn, 0, 10)
+
+
+func AddEventToSendQueue(data []byte) {
+      eventQueue <- data
 }
 
-var l sync.Mutex
+func startEventSender() {
+	fmt.Println("Starting event sender goroutine...")
+	for {
+		data := <- eventQueue
+		broadcastDEvent(data)
+		time.Sleep(time.Millisecond * 50)
+	}
+}
 
-func BroadcastDEvent(data []byte) {
+func broadcastDEvent(data []byte) {
 	for index, wsConn := range connectionRegistry {
-		// Note use of lock here, mitigates problems with the 3 concurrently executing "publish" goroutines.
-		l.Lock()
 		err := wsConn.WriteMessage(1, data)
-		l.Unlock()
 		if err != nil {
 			// Detected disconnected channel. Need to clean up.
 			fmt.Printf("Could not write to channel: %v", err)
 			wsConn.Close()
-			Remove(index)
+			remove(index)
 		}
 	}
 }
 
-var connectionRegistry = make([]*websocket.Conn, 0, 10)
+
+func remove(item int) {
+	connectionRegistry = append(connectionRegistry[:item], connectionRegistry[item+1:]...)
+}
 
 func registerChannel(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Path != "/start" {
@@ -80,7 +97,9 @@ func registerChannel(w http.ResponseWriter, r *http.Request) {
 
 }
 
-func StartWsServer() {
+func InitializeEventSystem(dclient *docker.Client) {
+	client = dclient
+
 	fmt.Println("Starting WebSocket server at port 6969")
 
 	http.HandleFunc("/start", registerChannel)
@@ -91,12 +110,13 @@ func StartWsServer() {
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		http.ServeFile(w, r, "static/"+r.URL.Path[1:])
 	})
+	go startEventSender()
+
 	fmt.Println("Starting WebSocket server")
 	err := http.ListenAndServe(":6969", nil)
 	if err != nil {
 		panic("ListenAndServe: " + err.Error())
 	}
-
 }
 
 func getNodes(w http.ResponseWriter, r *http.Request) {

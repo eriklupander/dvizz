@@ -1,7 +1,21 @@
 # Dvizz - A Docker Swarm Visualizer
 Inspired by the excellent [ManoMarks/docker-swarm-visualizer](https://github.com/ManoMarks/docker-swarm-visualizer), Dvizz provides an alternate way to render your Docker Swarm nodes, services and tasks using the D3 [Force Layout](https://github.com/d3/d3-3.x-api-reference/blob/master/Force-Layout.md).
 
-[screenshot](path to screenshot)
+![Dvizz image](dvizz1.png)
+
+Legend:
+- Big Gray circle: *Docker Swarm Node*
+- Medium size red circle: *Docker Swarm Service*
+- Small green circle: *Docker Swarm Task*
+
+Task states
+- Green: *running*
+- Green with red border: *preparing*
+- Gray: *allocated*
+
+Why tasks and not containers?
+
+
 
 ### Installation instructions
 Dvizz must be started in a Docker container running on a Swarm Manager node. I run it as a service using a _docker service create_ command:
