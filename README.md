@@ -16,9 +16,9 @@ Task states
 #### Why tasks and not containers?
 There is an event stream one can subscribe to from the Docker Remote API that provides live updates of the state of services and containers. However, that stream only includes changes occurring on the same Swarm Node that is providing the docker.sock to the subscriber. 
 
-Since dvizz requires us to run on the Swarm Manager, using /events stream would effectively make us miss all events emitted from other nodes in the Swarm. Since queries for *nodes, *services* and *tasks* over the docker.sock returns the global state (i.e. across the whole swarm) we're basing Dvizz on tasks rather than containers.
+Since dvizz requires us to run on the Swarm Manager, using /events stream would effectively make us miss all events emitted from other nodes in the Swarm. Since queries for *nodes*, *services* and *tasks* over the docker.sock returns the global state (i.e. across the whole swarm) we're basing Dvizz on tasks rather than containers.
 
-An option could be to create some kind of "dvizz agent" that would need to run och each node and subscribe to that nodes very own /events channel (given that the worker nodes actually supply that?) and then use some messaging mechanism to collect events to the "dvizz master" for propagation to the GUI.
+An option could be to create some kind of "dvizz agent" that would need to run on each node and subscribe to that nodes very own /events channel (given that the worker nodes actually supply that?) and then use some messaging mechanism to collect events to the "dvizz master" for propagation to the GUI.
 
 
 
@@ -34,7 +34,20 @@ Now it should be enough to point your browser at the LAN/public IP of your Docke
 _(example running Docker Swarm locally with Docker Machine)_
 
 ### Building locally
-The Dvizz source code is of course hosted here on github. The Dvizz backend is written in Go so you'll need the Go SDK to build it yourself. A sample Dockerfile can look like this:
+The Dvizz source code is of course hosted here on github. The Dvizz backend is written in Go so you'll need the Go SDK to build it yourself. 
+
+Clone the repository
+    
+    git clone https://github.com/eriklupander/dvizz
+
+Build an linux/amd64 binary (on OS X, change "darwin" to "windows" or whatever if you're on another OS)
+
+    export GOOS=linux
+    export CGO_ENABLED=0
+    go build -o dvizz-linux-amd64
+    export GOOS=darwin
+
+The sample Dockerfile looks like this:
 
     FROM iron/base
     
@@ -45,7 +58,7 @@ The Dvizz source code is of course hosted here on github. The Dvizz backend is w
     
 ## How does it work?
 
-The heart is the Go-based backend that uses [Go Dockerclient](github.com/fsouza/go-dockerclient) to poll the Docker Remote API every second or so over the _/var/run/docker.sock_. If the backend cannot access the docker.sock on startup it will panic which typically happens when one tries to (1) run Dvizz on localhost or (2) or a non Swarm Manager node.
+The heart is the Go-based backend that uses [Go Dockerclient](github.com/fsouza/go-dockerclient) to poll the Docker Remote API every second or so over the _/var/run/docker.sock_. If the backend cannot access the docker.sock on startup it will panic which typically happens when one tries to (1) run Dvizz on localhost or (2) on a non Swarm Manager node.
 
 The backend then keeps a diff of Swarm Nodes, Services and Tasks that's updated every second or so. Any new/removed tasks or state changes on running tasks are propagated to the web tier using plain ol' websockets.
 
@@ -57,7 +70,14 @@ In the frontend, the index.html page will perform an initial load using three di
 - D3 force layout seems to push new nodes off-screen. Swarm Nodes should have fixed positions?
 - The styling is more or less ugly :)
 
+# TODOs
+- Expand the functionality of the onclick listener. Currently, it just logs the node state to the console.
+- Style, fix layout etc.
+- Fix the line rendering. Either redraw the circles or use a custom line drawing that will "end" the line at the same offset as the r of the circle it connects to.
+- Introduce state rendering for the Swarm Nodes, now they always looks the same regardless of actual state.
+
 # 3rd party libraries
+- d3js.org (https://d3js.org/)
 - go-underscore (https://github.com/ahl5esoft/golang-underscore)
 - go-dockerclient (https://github.com/fsouza/go-dockerclient)
 - gorilla (https://github.com/gorilla/websocket)
