@@ -83,4 +83,4 @@ In the frontend, the index.html page will perform an initial load using three di
 - gorilla (https://github.com/gorilla/websocket)
   
 # License
-MIT license, see [LICENSE.md](http://github.com/eriklupander/dvizz/LICENSE.md)
+MIT license, see [LICENSE](https://github.com/eriklupander/dvizz/blob/master/LICENSE)
