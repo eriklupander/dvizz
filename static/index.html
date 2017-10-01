@@ -502,7 +502,7 @@
                     var linktype = resolveLinkTypeFromName(evt.dtask.name);
                     var newService = {
                         id: serviceId,
-                        name: evt.dtask.name.slice(0, evt.dtask.name.indexOf('@')),
+                        name: serviceId.substr(0, 12),
                         nodetype: 'service',
                         linktype: linktype,
                         state: ''
