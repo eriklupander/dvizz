@@ -250,21 +250,21 @@
           var tasks = [];
           var services = [];
 
-          $.getJSON("http://192.168.99.100:6969/nodes", null, function(data) {
+          $.getJSON("nodes", null, function(data) {
               // START SWARM NODES
               $.each(data, function(index, item) {
                   swarmNodes.push({"id": item.ID, "name": item.Description.Hostname, "status": item.Status.State, linktype: 'supporting', nodetype: 'node'});
               });
 
               // START services
-              $.getJSON("http://192.168.99.100:6969/services", null, function(data) {
+              $.getJSON("services", null, function(data) {
 
                   $.each(data, function(index, item) {
                       services.push({"id": item.ID, "name": item.Spec.Name})
                   });
 
                   // START TASKS
-                  $.getJSON("http://192.168.99.100:6969/tasks", null, function(data) {
+                  $.getJSON("tasks", null, function(data) {
                       $.each(data, function(index, item) {
                           if (item.DesiredState !== 'running') {
                               return;
@@ -417,7 +417,7 @@
 
 
       // Start websocket code
-      ws = new WebSocket("ws://192.168.99.100:6969/start");
+      ws = new WebSocket("ws://" + window.location.host + window.location.pathname + "start");
       ws.onmessage = function(e) {
           var evt = JSON.parse(e.data);
           console.log(e.data);
