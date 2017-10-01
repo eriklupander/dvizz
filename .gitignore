@@ -24,5 +24,3 @@ _testmain.go
 *.prof
 
 static/js/
-build/
-dist/
