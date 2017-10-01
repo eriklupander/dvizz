@@ -51,16 +51,8 @@ Build an linux/amd64 binary (on OS X, change "darwin" to "windows" or whatever i
     go build -o dvizz-linux-amd64
     export GOOS=darwin
 
-The sample Dockerfile looks like this:
-
-    FROM iron/base
-    
-    EXPOSE 6969
-    ADD dvizz-linux-amd64 dvizz-linux-amd64
-    ADD static/*.css static/
-    ADD static/*.html static/
-    ADD static/js static/js
-    ENTRYPOINT ["./dvizz-linux-amd64"]
+The [Dockerfile](Dockerfile) builds a docker image using [multi-stage builds](https://docs.docker.com/engine/userguide/eng-image/multistage-build/).
+There is no need to install _go_ and _bower_ for building the docker image.
     
 ## How does it work?
 
