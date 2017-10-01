@@ -504,7 +504,7 @@
                 var linktype = resolveLinkTypeFromName(evt.dtask.name);
                 var newService = {
                     id: serviceId,
-                    name: evt.dtask.name,
+                    name: evt.dtask.name.slice(0, evt.dtask.name.indexOf('@')),
                     nodetype: 'service',
                     linktype: linktype,
                     state: ''
@@ -518,7 +518,7 @@
             // Construct the new TASK node
             var newNode = {
                 id: evt.dtask.id,
-                name: evt.dtask.name,
+                name: evt.dtask.name.slice(0, evt.dtask.name.indexOf('@')),
                 nodetype: 'container',
                 linktype: 'serviceinstance',
                 state: evt.dtask.status
