@@ -1,0 +1,21 @@
+{
+  "name": "dvizz",
+  "homepage": "https://github.com/DE-IBH/snmd",
+  "authors": [
+    "Erik Lupander @eriklupander",
+    "Fredrik Garneij <fredrik.garneij@gmail.com>",
+    "Thomas Liske <liske@ibh.de>"
+  ],
+  "description": "Docker Swarm visualization including live updates using D3 Force layout",
+  "main": "",
+  "license": "GPL-2.0+",
+  "private": true,
+  "ignore": [
+    "**/.*"
+  ],
+  "dependencies": {
+    "d3": "v3",
+    "underscore": "^1.8.3",
+    "jquery": "v1"
+  }
+}
