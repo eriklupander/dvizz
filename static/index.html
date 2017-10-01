@@ -209,8 +209,9 @@
                                     return;
                                 }
                                 tasks.push({
-                                    "id": item.ID, "image": item.Spec.ContainerSpec.Image,
-                                    "name": item.Spec.ContainerSpec.Image + "." + item.Slot,
+                                    "id": item.ID,
+                                    "image": item.Spec.ContainerSpec.Image,
+                                    "name": item.Spec.ContainerSpec.Image.slice(0, item.Spec.ContainerSpec.Image.indexOf('@')) + "." + item.Slot,
                                     "serviceId": item.ServiceID,
                                     "serviceName": item.Spec.ContainerSpec.Image,
                                     "nodeId": item.NodeID,
@@ -502,7 +503,7 @@
                     var linktype = resolveLinkTypeFromName(evt.dtask.name);
                     var newService = {
                         id: serviceId,
-                        name: evt.dtask.name.slice(0, evt.dtask.name.indexOf('@')),
+                        name: serviceId.substr(0, 12),
                         nodetype: 'service',
                         linktype: linktype,
                         state: ''
@@ -516,7 +517,7 @@
                 // Construct the new TASK node
                 var newNode = {
                     id: evt.dtask.id,
-                    name: evt.dtask.name.slice(0, evt.dtask.name.indexOf('@')),
+                    name: evt.dtask.name.slice(0, evt.dtask.name.indexOf('@')) + evt.dtask.name.substring(evt.dtask.name.lastIndexOf('.')),
                     nodetype: 'container',
                     linktype: 'serviceinstance',
                     state: evt.dtask.status
