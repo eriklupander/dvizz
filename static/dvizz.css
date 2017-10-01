@@ -1,0 +1,71 @@
+body {
+  margin: 0;
+}
+
+#dvizz-svg {
+  width: 100vw;
+  height: 100vh;
+  position: absolute;
+}
+
+.link {
+  fill: none;
+  stroke: #666;
+  stroke-width: 1.5px;
+}
+
+#serviceinstance {
+  fill: black;
+  stroke-width: 1.5px;
+}
+
+.link.serviceinstance {
+  stroke: darkgrey;
+  stroke-width: 1.5px;
+}
+
+.link.supporting {
+  stroke-dasharray: 0, 2 1;
+}
+
+circle {
+  fill: #fff;
+  stroke: #333;
+  stroke-width: 1.5px;
+}
+
+circle.node {
+  fill: MistyRose;
+  stroke: #333;
+  stroke-width: 1.5px;
+}
+
+circle.node.service {
+  fill: LightYellow;
+  stroke: #333;
+  stroke-width: 1.5px;
+}
+
+circle.container.starting {
+  fill: #bfb;
+  stroke: #f33;
+  stroke-width: 2.5px;
+}
+
+circle.container.running {
+  fill: #bfb;
+  stroke: #333;
+  stroke-width: 1.5px;
+}
+
+circle.container.shutdown {
+  fill: #eee;
+  stroke: #f33;
+  stroke-width: 2.5px;
+}
+
+text {
+  font: 20px sans-serif;
+  pointer-events: none;
+  text-shadow: 0 1px 0 #fff, 1px 0 0 #fff, 0 -1px 0 #fff, -1px 0 0 #fff;
+}
