@@ -40,6 +40,10 @@ Clone the repository
     
     git clone https://github.com/eriklupander/dvizz
 
+Fetch external javascript libraries using [Bower](https://bower.io/):
+
+    bower install
+
 Build an linux/amd64 binary (on OS X, change "darwin" to "windows" or whatever if you're on another OS)
 
     export GOOS=linux
@@ -53,7 +57,9 @@ The sample Dockerfile looks like this:
     
     EXPOSE 6969
     ADD dvizz-linux-amd64 dvizz-linux-amd64
+    ADD static/*.css static/
     ADD static/*.html static/
+    ADD static/js static/js
     ENTRYPOINT ["./dvizz-linux-amd64"]
     
 ## How does it work?
