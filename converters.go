@@ -27,10 +27,14 @@ import (
 	"github.com/ahl5esoft/golang-underscore"
 	"github.com/docker/docker/api/types/swarm"
 	"strconv"
+	"strings"
 )
 
-func convNodes(arr []swarm.Node) []DNode {
-	return underscore.Map(arr, toDNode).([]DNode)
+func convNodes(nodes []swarm.Node) []DNode {
+	if nodes == nil || len(nodes) == 0 {
+		return make([]DNode, 0)
+	}
+	return underscore.Map(nodes, toDNode).([]DNode)
 }
 
 func toDNode(node swarm.Node, _ int) DNode {
@@ -38,6 +42,9 @@ func toDNode(node swarm.Node, _ int) DNode {
 }
 
 func convTasks(tasks []swarm.Task) []DTask {
+	if tasks == nil || len(tasks) == 0 {
+		return make([]DTask, 0)
+	}
 	v := underscore.Select(tasks, func(task swarm.Task, _ int) bool {
 		// Make sure we only include items that has a nodeId assigned
 		return task.NodeID != ""
@@ -46,7 +53,7 @@ func convTasks(tasks []swarm.Task) []DTask {
 	u := underscore.Map(v, func(task swarm.Task, _ int) DTask {
 		return DTask{
 			Id:        task.ID,
-			Name:      task.Spec.ContainerSpec.Image + "." + strconv.Itoa(task.Slot),
+			Name:      sanitizeTaskName(task.Spec.ContainerSpec.Image) + "." + strconv.Itoa(task.Slot),
 			Status:    string(task.Status.State),
 			ServiceId: task.ServiceID,
 			NodeId:    task.NodeID,
@@ -56,8 +63,18 @@ func convTasks(tasks []swarm.Task) []DTask {
 	return dtasks
 }
 
-func convServices(services []swarm.Service) []DService {
+func sanitizeTaskName(name string) string {
+	index := strings.Index(name, ":latest")
+	if index > -1 {
+		return name[:index]
+	}
+	return name
+}
 
+func convServices(services []swarm.Service) []DService {
+	if services == nil || len(services) == 0 {
+		return make([]DService, 0)
+	}
 	u := underscore.Map(services, func(service swarm.Service, _ int) DService {
 		return DService{
 			Id:   service.ID,
