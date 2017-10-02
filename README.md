@@ -1,7 +1,7 @@
 # Dvizz - A Docker Swarm Visualizer
 Inspired by the excellent [ManoMarks/docker-swarm-visualizer](https://github.com/ManoMarks/docker-swarm-visualizer), Dvizz provides an alternate way to render your Docker Swarm nodes, services and tasks using the D3 [Force Layout](https://github.com/d3/d3-3.x-api-reference/blob/master/Force-Layout.md).
 
-![Dvizz image](dvizz1.png)
+![Dvizz image](https://raw.githubusercontent.com/eriklupander/dvizz/master/dvizz1.png)
 
 Legend:
 - Big Gray circle: *Docker Swarm Node*
@@ -89,10 +89,12 @@ In the frontend, the index.html page will perform an initial load using three di
 - Introduce state rendering for the Swarm Nodes, now they always looks the same regardless of actual state.
 
 # 3rd party libraries
+- jQuery (https://jquery.com/)
 - d3js.org (https://d3js.org/)
 - go-underscore (https://github.com/ahl5esoft/golang-underscore)
 - go-dockerclient (https://github.com/fsouza/go-dockerclient)
 - gorilla (https://github.com/gorilla/websocket)
+- Underscore.js (http://underscorejs.org/)
   
 # License
 MIT license, see [LICENSE](https://github.com/eriklupander/dvizz/blob/master/LICENSE)
