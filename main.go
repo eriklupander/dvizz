@@ -28,6 +28,7 @@ import (
 	"github.com/ahl5esoft/golang-underscore"
 	"github.com/eriklupander/dvizz/comms"
 	"github.com/fsouza/go-dockerclient"
+	"log"
 	"sync"
 	"time"
 )
@@ -45,12 +46,20 @@ func main() {
 	}
 
 	go comms.InitializeEventSystem(client)
+	log.Println("Initialized event system")
 
 	go publishTasks(client)
+	log.Println("Initialized publishTasks")
+
 	go publishServices(client)
+	log.Println("Initialized publishServices")
+
 	go publishNodes(client)
+	log.Println("Initialized publishNodes")
 
 	// Block...
+	log.Println("Waiting at block...")
+
 	wg := sync.WaitGroup{} // Use a WaitGroup to block main() exit
 	wg.Add(1)
 	wg.Wait()
