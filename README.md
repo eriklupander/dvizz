@@ -53,6 +53,29 @@ Build an linux/amd64 binary (on OS X, change "darwin" to "windows" or whatever i
 
 The [Dockerfile](Dockerfile) builds a docker image using [multi-stage builds](https://docs.docker.com/engine/userguide/eng-image/multistage-build/).
 There is no need to install _go_ and _bower_ for building the docker image.
+
+### Deploying as a Swarm service
+
+1.) Build using the Dockerfile and specify a tag, for example _someprefix/dvizz_.
+
+
+    docker build -t someprefix/dvizz .
+
+2.) Example _docker service create_ command. 
+
+Note that you may need to remove or change the _--network_ property to suit your Docker Swarm mode setup.
+
+    docker service create --constraint node.role==manager --replicas 1 \
+    --name dvizz -p 6969:6969 \
+    --mount type=bind,source=/var/run/docker.sock,target=/var/run/docker.sock \
+    --network my_network someprefix/dvizz
+    
+3.) Done. You should see _dvizz_ when using _docker service list_:
+    
+    > docker service ls
+    ID                  NAME                MODE                REPLICAS            IMAGE
+    3aoic5me90aj        dvizz              replicated          1/1                 someprefix/dvizz
+
     
 ## How does it work?
 
