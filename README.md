@@ -20,19 +20,6 @@ Since dvizz requires us to run on the Swarm Manager, using /events stream would 
 
 An option could be to create some kind of "dvizz agent" that would need to run on each node and subscribe to that nodes very own /events channel (given that the worker nodes actually supply that?) and then use some messaging mechanism to collect events to the "dvizz master" for propagation to the GUI.
 
-
-
-### Installation instructions
-Dvizz must be started in a Docker container running on a Swarm Manager node. I run it as a service using a _docker service create_ command:
-
-    docker service create --constraint node.role==manager --replicas 1 --name dvizz -p 6969:6969 --mount type=bind,source=/var/run/docker.sock,target=/var/run/docker.sock --network my-network --update-delay 10s --with-registry-auth  --update-parallelism 1 eriklupander/dvizz
-    
-Now it should be enough to point your browser at the LAN/public IP of your Docker Swarm manager node, e.g:
-
-    http://192.168.99.100:6969
-    
-_(example running Docker Swarm locally with Docker Machine)_
-
 ### Building locally
 The Dvizz source code is of course hosted here on github. The Dvizz backend is written in Go so you'll need the Go SDK to build it yourself. 
 
@@ -54,14 +41,15 @@ Build an linux/amd64 binary (on OS X, change "darwin" to "windows" or whatever i
 The [Dockerfile](Dockerfile) builds a docker image using [multi-stage builds](https://docs.docker.com/engine/userguide/eng-image/multistage-build/).
 There is no need to install _go_ and _bower_ for building the docker image.
 
-### Deploying as a Swarm service
+### Running on Docker Swarm mode
+Dvizz must be started in a Docker container running on a Swarm Manager node. I run it as a service using a _docker service create_ command. 
 
-1.) Build using the Dockerfile and specify a tag, for example _someprefix/dvizz_.
+1.) Build locally (as described above) using the Dockerfile and specify a tag, for example _someprefix/dvizz_.
 
 
     docker build -t someprefix/dvizz .
 
-2.) Example _docker service create_ command. 
+2.) Run a _docker service create_ command. 
 
 Note that you may need to remove or change the _--network_ property to suit your Docker Swarm mode setup.
 
@@ -76,6 +64,9 @@ Note that you may need to remove or change the _--network_ property to suit your
     ID                  NAME                MODE                REPLICAS            IMAGE
     3aoic5me90aj        dvizz              replicated          1/1                 someprefix/dvizz
 
+4) Direct your browser to http://192.168.99.100:6969
+    
+_(example running Docker Swarm locally with Docker Machine)_
     
 ## How does it work?
 
