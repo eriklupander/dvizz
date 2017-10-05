@@ -1,9 +1,9 @@
-package main
+package service
 
 import (
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/mock"
-
+	. "github.com/eriklupander/dvizz/model"
 	"fmt"
 	"github.com/eriklupander/dvizz/comms"
 	"testing"

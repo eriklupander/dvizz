@@ -25,18 +25,13 @@ package main
 
 import (
 	"github.com/eriklupander/dvizz/comms"
+	"github.com/eriklupander/dvizz/service"
 	"github.com/fsouza/go-dockerclient"
 	"log"
 	"sync"
 )
 
-var filters = make(map[string][]string)
-
-var eventServer comms.IEventServer
-
 func main() {
-
-	filters["desired-state"] = []string{"running"}
 
 	endpoint := "unix:///var/run/docker.sock"
 	client, err := docker.NewClient(endpoint)
@@ -44,18 +39,15 @@ func main() {
 		panic(err)
 	}
 
-	eventServer = &comms.EventServer{Client: client}
+	service.SetEventServer(&comms.EventServer{Client: client})
 
-	go eventServer.InitializeEventSystem()
-	log.Println("Initialized event system")
-
-	go publishTasks(client)
+	go service.PublishTasks(client)
 	log.Println("Initialized publishTasks")
 
-	go publishServices(client)
+	go service.PublishServices(client)
 	log.Println("Initialized publishServices")
 
-	go publishNodes(client)
+	go service.PublishNodes(client)
 	log.Println("Initialized publishNodes")
 
 	// Block...

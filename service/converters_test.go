@@ -1,4 +1,4 @@
-package main
+package service
 
 import (
 	"github.com/docker/docker/api/types/swarm"

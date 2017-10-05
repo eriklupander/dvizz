@@ -14,7 +14,7 @@ FROM golang AS golang
 WORKDIR /dvizz
 
 ADD . /dvizz
-RUN go get -d && CGO_ENABLED=0 go build -a -o dvizz
+RUN go get -v -d && CGO_ENABLED=0 go build -a -o dvizz
 
 
 

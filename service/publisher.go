@@ -1,18 +1,32 @@
-package main
+package service
 
 import (
 	"encoding/json"
 	"github.com/ahl5esoft/golang-underscore"
 	"github.com/fsouza/go-dockerclient"
 	"time"
+	"github.com/eriklupander/dvizz/comms"
+        . "github.com/eriklupander/dvizz/model"
+        "log"
 )
 
+var filters = make(map[string][]string)
 var lastNodes []DNode
+var eventServer comms.IEventServer
 
+func init() {
+	filters["desired-state"] = []string{"running"}
+}
+
+func SetEventServer(_eventServer comms.IEventServer) {
+        eventServer = _eventServer
+        go eventServer.InitializeEventSystem()
+        log.Println("Initialized event system")
+}
 /**
  * Will poll for Swarm Nodes changes every 5 seconds.
  */
-func publishNodes(client *docker.Client) {
+func PublishNodes(client *docker.Client) {
 	tmp, _ := client.ListNodes(docker.ListNodesOptions{})
 	lastNodes = convNodes(tmp)
 	for {
@@ -60,7 +74,7 @@ func processNodeListing(currentNodes []DNode) {
 /**
  * Will poll for Swarm service changes every second.
  */
-func publishServices(client *docker.Client) {
+func PublishServices(client *docker.Client) {
 	services, _ := client.ListServices(docker.ListServicesOptions{})
 	lastServices := convServices(services)
 	for {
@@ -105,7 +119,7 @@ func publishServices(client *docker.Client) {
 }
 
 /** Polls for task changes once per second */
-func publishTasks(client *docker.Client) {
+func PublishTasks(client *docker.Client) {
 	tasks, _ := client.ListTasks(docker.ListTasksOptions{Filters: filters})
 	lastTasks := convTasks(tasks)
 	for {
