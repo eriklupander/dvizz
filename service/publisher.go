@@ -21,7 +21,7 @@ func init() {
 func SetEventServer(_eventServer comms.IEventServer) {
         eventServer = _eventServer
         go eventServer.InitializeEventSystem()
-        log.Println("Initialized event system")
+        log.Println("Initialized event system. Period.")
 }
 /**
  * Will poll for Swarm Nodes changes every 5 seconds.
