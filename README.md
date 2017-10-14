@@ -24,7 +24,7 @@ An option could be to create some kind of "dvizz agent" that would need to run o
 The Dvizz source code is of course hosted here on github. The Dvizz backend is written in Go so you'll need the Go SDK to build it yourself. 
 
 Clone the repository
-    
+
     git clone https://github.com/eriklupander/dvizz
 
 Fetch external javascript libraries using [Bower](https://bower.io/):
@@ -40,6 +40,10 @@ Build an linux/amd64 binary (on OS X, change "darwin" to "windows" or whatever i
 
 The [Dockerfile](Dockerfile) builds a docker image using [multi-stage builds](https://docs.docker.com/engine/userguide/eng-image/multistage-build/).
 There is no need to install _go_ and _bower_ for building the docker image.
+
+There a *Makefile* and another [Dockerfile](Dockerfile.dev) for local development.
+You can use `make all` to build dvizz and `make docker` to create a docker image
+from the builds. This is crucial faster than multi-stage build.
 
 ### Running on Docker Swarm mode
 Dvizz must be started in a Docker container running on a Swarm Manager node. I run it as a service using a _docker service create_ command. 
