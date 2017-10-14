@@ -5,7 +5,7 @@ EXPOSE 6969
 WORKDIR /dvizz
 
 ADD static/ static/
-ADD build/dvizz /dvizz/dvizz
+ADD dist/dvizz /dvizz/dvizz
 
 ENTRYPOINT ["./dvizz"]
 CMD []
