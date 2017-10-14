@@ -58,7 +58,7 @@ Note that you may need to remove or change the _--network_ property to suit your
     --mount type=bind,source=/var/run/docker.sock,target=/var/run/docker.sock \
     --network my_network someprefix/dvizz
     
-3.) Done. You should see _dvizz_ when using _docker service list_:
+3.) Done. You should see _dvizz_ when using _docker service ls_:
     
     > docker service ls
     ID                  NAME                MODE                REPLICAS            IMAGE

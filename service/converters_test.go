@@ -1,8 +1,8 @@
-package main
+package service
 
 import (
 	"github.com/docker/docker/api/types/swarm"
-	"strconv"
+	. "github.com/smartystreets/goconvey/convey"
 	"testing"
 )
 
@@ -46,35 +46,42 @@ func TestConvertTasks(t *testing.T) {
 	}
 }
 
+func TestConvertNodes(t *testing.T) {
+	nodes := make([]swarm.Node, 0)
+	nodes = append(nodes, swarm.Node{ID: "id1", Status: swarm.NodeStatus{State: "running"}, Description: swarm.NodeDescription{Hostname: "hostname"}})
+	result := convNodes(nodes)
+
+	Convey("Assert", t, func() {
+		So(result, ShouldNotBeNil)
+		So(len(result), ShouldEqual, 1)
+		So(result[0].Name, ShouldEqual, "hostname")
+	})
+
+}
+
 func TestConvertTasksEmpty(t *testing.T) {
 	tasks := make([]swarm.Task, 0)
 	result := convTasks(tasks)
-	if result == nil {
-		t.Error("Expected non-nill result")
-	}
-	if len(result) != 0 {
-		t.Error("Expecte 0 length result, got: " + strconv.Itoa(len(result)))
-	}
+	Convey("Assert", t, func() {
+		So(result, ShouldNotBeNil)
+		So(len(result), ShouldEqual, 0)
+	})
 }
 
 func TestConvertServicesEmpty(t *testing.T) {
 	services := make([]swarm.Service, 0)
 	result := convServices(services)
-	if result == nil {
-		t.Error("Expected non-nill result")
-	}
-	if len(result) != 0 {
-		t.Error("Expecte 0 length result, got: " + strconv.Itoa(len(result)))
-	}
+	Convey("Assert", t, func() {
+		So(result, ShouldNotBeNil)
+		So(len(result), ShouldEqual, 0)
+	})
 }
 
 func TestConvertServicesNil(t *testing.T) {
 	var services []swarm.Service
 	result := convServices(services)
-	if result == nil {
-		t.Error("Expected non-nill result")
-	}
-	if len(result) != 0 {
-		t.Error("Expecte 0 length result, got: " + strconv.Itoa(len(result)))
-	}
+	Convey("Assert", t, func() {
+		So(result, ShouldNotBeNil)
+		So(len(result), ShouldEqual, 0)
+	})
 }
