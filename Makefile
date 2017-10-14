@@ -4,7 +4,7 @@ all: golang bower
 
 golang:
 	mkdir -p $(GOPATH)
-	export GOPATH=$(GOPATH) && go get -d
+	export GOPATH=$(GOPATH) && go get -v -d
 	mkdir -p dist
 	export GOPATH=$(GOPATH) && go build -o dist/dvizz
 
