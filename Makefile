@@ -10,3 +10,6 @@ golang:
 
 bower: bower.json
 	bower install
+
+docker:
+	docker build -f Dockerfile.dev .
