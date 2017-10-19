@@ -32,22 +32,22 @@ import (
 )
 
 func main() {
-
+	log.Println("Starting dvizz!")
 	endpoint := "unix:///var/run/docker.sock"
-	client, err := docker.NewClient(endpoint)
+	dockerClient, err := docker.NewClient(endpoint)
 	if err != nil {
 		panic(err)
 	}
 
-	service.SetEventServer(&comms.EventServer{Client: client})
+	service.SetEventServer(&comms.EventServer{Client: dockerClient})
 
-	go service.PublishTasks(client)
+	go service.PublishTasks(dockerClient)
 	log.Println("Initialized publishTasks")
 
-	go service.PublishServices(client)
+	go service.PublishServices(dockerClient)
 	log.Println("Initialized publishServices")
 
-	go service.PublishNodes(client)
+	go service.PublishNodes(dockerClient)
 	log.Println("Initialized publishNodes")
 
 	// Block...

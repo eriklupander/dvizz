@@ -9,11 +9,15 @@ import (
         "time"
         "log"
         "strconv"
+        "os/signal"
+        "os"
+        "syscall"
 )
 
 type IEventServer interface {
         AddEventToSendQueue(data []byte)
         InitializeEventSystem()
+        Close()
 }
 
 type EventServer struct {
@@ -28,16 +32,14 @@ type EventServer struct {
 
 func (server *EventServer) init() {
         server.upgrader = websocket.Upgrader{} // use default options
-        server.eventQueue = make(chan []byte)
         server.connectionRegistry = make([]*websocket.Conn, 0, 10)
 }
 
 func (server *EventServer) AddEventToSendQueue(data []byte) {
-        server.eventQueue <- data
+        server.eventQueue<-data
 }
 
-func (server *EventServer) InitializeEventSystem() {              // dclient *docker.Client
-       // server.client = dclient               // TODO remove
+func (server *EventServer) InitializeEventSystem() {
         if server.Client == nil {
                 panic("Cannot initialize event server, Docker client not assigned.")
         }
@@ -52,12 +54,28 @@ func (server *EventServer) InitializeEventSystem() {              // dclient *do
         http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
                 http.ServeFile(w, r, "static/" + r.URL.Path[1:])
         })
+
+        server.eventQueue = make(chan []byte, 100)
         go server.startEventSender()
+
+        handleSigterm(func() {
+                server.Close()
+        })
+        fmt.Println("Registered sigterm handler")
 
         fmt.Println("Starting WebSocket server")
         err := http.ListenAndServe(":6969", nil)
         if err != nil {
                 panic("ListenAndServe: " + err.Error())
+        }
+}
+
+func (server *EventServer) Close() {
+        for index, wsConn := range server.connectionRegistry {
+                adr := wsConn.RemoteAddr().String()
+                wsConn.Close()
+                server.remove(index)
+                fmt.Println("Gracefully shut down websocket connection to " + adr)
         }
 }
 
@@ -101,6 +119,7 @@ func (server *EventServer) startEventSender() {
         fmt.Println("Starting event sender goroutine...")
         for {
                 data := <-server.eventQueue
+                log.Println("About to send event: " + string(data))
                 server.broadcastDEvent(data)
                 time.Sleep(time.Millisecond * 50)
         }
@@ -118,8 +137,9 @@ func (server *EventServer) broadcastDEvent(data []byte) {
         }
 }
 
-func (server *EventServer) remove(item int) {
-        server.connectionRegistry = append(server.connectionRegistry[:item], server.connectionRegistry[item + 1:]...)
+func (server *EventServer) remove(i int)  {
+        server.connectionRegistry[len(server.connectionRegistry)-1], server.connectionRegistry[i] = server.connectionRegistry[i], server.connectionRegistry[len(server.connectionRegistry)-1]
+        server.connectionRegistry = server.connectionRegistry[:len(server.connectionRegistry)-1]
 }
 
 func (server *EventServer) registerChannel(w http.ResponseWriter, r *http.Request) {
@@ -149,4 +169,17 @@ func writeResponse(w http.ResponseWriter, json []byte) {
         w.WriteHeader(http.StatusOK)
         w.Write(json)
 }
+
+// Handles Ctrl+C or most other means of "controlled" shutdown gracefully. Invokes the supplied func before exiting.
+func handleSigterm(handleExit func()) {
+        c := make(chan os.Signal, 1)
+        signal.Notify(c, os.Interrupt)
+        signal.Notify(c, syscall.SIGTERM)
+        go func() {
+                <-c
+                handleExit()
+                os.Exit(1)
+        }()
+}
+
 
