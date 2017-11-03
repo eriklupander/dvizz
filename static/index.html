@@ -215,7 +215,9 @@
                                 }
 
                                 /* strip image hash */
-                                name = name.slice(0, name.indexOf('@'));
+                                if(name.indexOf('@') > -1) {
+                                    name = name.slice(0, name.indexOf('@'));
+                                }
 
                                 /* strip implicit 'latest' tag */
                                 if(name.substr(-7) == ":latest") {
