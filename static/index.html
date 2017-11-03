@@ -229,9 +229,7 @@
                                 }
 
                                 /* global tasks do not have a slot id */
-                                if(typeof item.slot === "undefined") {
-                                    name += '/g';
-                                } else {
+                                if(typeof item.slot !== "undefined") {
                                     name += '/' + item.Slot;
                                 }
 
