@@ -11,6 +11,10 @@
   <body>
     <script>
         (function() {
+            /* true : create single global service nodes
+               false: create one service node per service and node */
+            var config_global_services = false;
+
             // A list of node objects.  We represent each node as {id: "name"}, but the D3
             // system will decorate the node with addtional fields, notably x: and y: for
             // the force layout and index" as part of the binding mechanism.
@@ -208,10 +212,31 @@
                                 if (item.DesiredState !== 'running') {
                                     return;
                                 }
+
+                                var name = item.Spec.ContainerSpec.Image;
+                                if(name.lastIndexOf('/') > -1) {
+                                    name = name.substr(name.lastIndexOf('/') + 1);
+                                }
+
+                                /* strip image hash */
+                                if(name.indexOf('@') > -1) {
+                                    name = name.slice(0, name.indexOf('@'));
+                                }
+
+                                /* strip implicit 'latest' tag */
+                                if(name.substr(-7) == ":latest") {
+                                    name = name.slice(0, -7);
+                                }
+
+                                /* global tasks do not have a slot id */
+                                if(typeof item.slot !== "undefined") {
+                                    name += '/' + item.Slot;
+                                }
+
                                 tasks.push({
                                     "id": item.ID,
                                     "image": item.Spec.ContainerSpec.Image,
-                                    "name": item.Spec.ContainerSpec.Image.slice(0, item.Spec.ContainerSpec.Image.indexOf('@')) + "." + item.Slot,
+                                    "name": name,
                                     "serviceId": item.ServiceID,
                                     "serviceName": item.Spec.ContainerSpec.Image,
                                     "nodeId": item.NodeID,
@@ -254,7 +279,8 @@
                                             nodeId: task.nodeId
                                         },
                                         target: {
-                                            id: service.id + '-' + task.nodeId,
+                                            /* Link task to node or to node-local-service? */
+                                            id: (config_global_services ? service.id : service.id + '-' + task.nodeId),
                                             name: service.name,
                                             linktype: "serviceinstance",
                                             status: '',
@@ -264,25 +290,50 @@
                                         tgt: 'service'
                                     };
                                     links.push(link);
+
+                                    /* link task directly to node if service nodes are global */
+                                    if(config_global_services) {
+                                        links.push({
+                                            source: {
+                                                id: task.id,
+                                                name: task.name,
+                                                linktype: "supporting",
+                                                status: task.status,
+                                                nodeId: task.nodeId
+                                            },
+                                            target: {
+                                                id: task.nodeId,
+                                                name: swarmNode.name,
+                                                linktype: "supporting",
+                                                status: '',
+                                                nodeId: task.nodeId
+                                            }, // Services don't have statuses. Not here :)
+                                            src: 'container',
+                                            tgt: 'node'
+                                        });
+                                    }
+
                                     taskAdded = true;
                                 }
                             }
 
                             // Add link from service to swarm node
                             if (taskAdded) {
-                                var nlink = {
-                                    source: {
-                                        id: service.id + '-' + swarmNode.id,
-                                        name: service.name,
-                                        linktype: 'supporting',
-                                        nodetype: 'service',
-                                        status: ''
-                                    },
-                                    target: swarmNode,
-                                    src: 'service',
-                                    tgt: 'node'
-                                };
-                                links.push(nlink);
+                                /* link local service to node */
+                                if(!config_global_services) {
+                                    links.push({
+                                        source: {
+                                            id: service.id + '-' + swarmNode.id,
+                                            name: service.name,
+                                            linktype: 'supporting',
+                                            nodetype: 'service',
+                                            status: ''
+                                        },
+                                        target: swarmNode,
+                                        src: 'service',
+                                        tgt: 'node'
+                                    });
+                                }
                                 swarmNodeHasLinks = true;
                             }
 
