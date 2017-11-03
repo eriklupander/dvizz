@@ -33,8 +33,7 @@ import (
 
 func main() {
 	log.Println("Starting dvizz!")
-	endpoint := "unix:///var/run/docker.sock"
-	dockerClient, err := docker.NewClient(endpoint)
+	dockerClient, err := docker.NewClientFromEnv()
 	if err != nil {
 		panic(err)
 	}
