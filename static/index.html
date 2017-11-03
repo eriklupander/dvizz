@@ -208,10 +208,31 @@
                                 if (item.DesiredState !== 'running') {
                                     return;
                                 }
+
+                                var name = item.Spec.ContainerSpec.Image;
+                                if(name.lastIndexOf('/') > -1) {
+                                    name = name.substr(name.lastIndexOf('/') + 1);
+                                }
+
+                                /* strip image hash */
+                                name = name.slice(0, name.indexOf('@'));
+
+                                /* strip implicit 'latest' tag */
+                                if(name.substr(-7) == ":latest") {
+                                    name = name.slice(0, -7);
+                                }
+
+                                /* global tasks do not have a slot id */
+                                if(typeof item.slot === "undefined") {
+                                    name += '/g';
+                                } else {
+                                    name += '/' + item.Slot;
+                                }
+
                                 tasks.push({
                                     "id": item.ID,
                                     "image": item.Spec.ContainerSpec.Image,
-                                    "name": item.Spec.ContainerSpec.Image.slice(0, item.Spec.ContainerSpec.Image.indexOf('@')) + "." + item.Slot,
+                                    "name": name,
                                     "serviceId": item.ServiceID,
                                     "serviceName": item.Spec.ContainerSpec.Image,
                                     "nodeId": item.NodeID,
