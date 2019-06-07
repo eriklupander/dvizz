@@ -21,12 +21,12 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
-package main
+package dvizz
 
 import (
-	"github.com/eriklupander/dvizz/comms"
-	"github.com/eriklupander/dvizz/service"
-	"github.com/fsouza/go-dockerclient"
+	"github.com/eriklupander/dvizz/internal/pkg/comms"
+	"github.com/eriklupander/dvizz/internal/pkg/service"
+	docker "github.com/fsouza/go-dockerclient"
 	"log"
 	"sync"
 )
@@ -38,15 +38,15 @@ func main() {
 		panic(err)
 	}
 
-	service.SetEventServer(&comms.EventServer{Client: dockerClient})
+	publisher := service.NewPublisher(&comms.EventServer{Client: dockerClient})
 
-	go service.PublishTasks(dockerClient)
+	go publisher.PublishTasks(dockerClient)
 	log.Println("Initialized publishTasks")
 
-	go service.PublishServices(dockerClient)
+	go publisher.PublishServices(dockerClient)
 	log.Println("Initialized publishServices")
 
-	go service.PublishNodes(dockerClient)
+	go publisher.PublishNodes(dockerClient)
 	log.Println("Initialized publishNodes")
 
 	// Block...

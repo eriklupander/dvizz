@@ -27,7 +27,7 @@ func TestConvertTasks(t *testing.T) {
 		NodeID:    "node-1",
 		ServiceID: "service-1",
 		Spec: swarm.TaskSpec{
-			ContainerSpec: swarm.ContainerSpec{
+			ContainerSpec: &swarm.ContainerSpec{
 				Image: "image/name",
 			},
 		},

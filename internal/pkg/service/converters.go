@@ -26,7 +26,7 @@ package service
 import (
 	"github.com/ahl5esoft/golang-underscore"
 	"github.com/docker/docker/api/types/swarm"
-	. "github.com/eriklupander/dvizz/model"
+	. "github.com/eriklupander/dvizz/internal/pkg/model"
 	"strconv"
 	"strings"
 )
@@ -46,12 +46,13 @@ func convTasks(tasks []swarm.Task) []DTask {
 	if tasks == nil || len(tasks) == 0 {
 		return make([]DTask, 0)
 	}
-	v := underscore.Select(tasks, func(task swarm.Task, _ int) bool {
+	dst := make([]swarm.Task, 0)
+	underscore.Chain2(tasks).Filter(func(task swarm.Task, _ int) bool {
 		// Make sure we only include items that has a nodeId assigned
 		return task.NodeID != ""
-	})
+	}).Value(&dst)
 
-	u := underscore.Map(v, func(task swarm.Task, _ int) DTask {
+	u := underscore.Map(dst, func(task swarm.Task, _ int) DTask {
 		return DTask{
 			Id:        task.ID,
 			Name:      sanitizeTaskName(task.Spec.ContainerSpec.Image) + "." + strconv.Itoa(task.Slot),

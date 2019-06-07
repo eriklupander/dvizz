@@ -26,3 +26,4 @@ _testmain.go
 static/js/
 build/
 dist/
+bin/

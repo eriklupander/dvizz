@@ -61,9 +61,9 @@ func (d DNode) GetId() string {
 }
 
 func (d DNode) Equals(d2 Identifier) bool {
-        // log.Printf("About to compare DNode %v with %v: result %v", d.GetId(), d2.GetId(), d.GetId() == d2.GetId())
+	// log.Printf("About to compare DNode %v with %v: result %v", d.GetId(), d2.GetId(), d.GetId() == d2.GetId())
 
-        return d.GetId() == d2.GetId()
+	return d.GetId() == d2.GetId()
 }
 
 type DTask struct {
@@ -96,9 +96,9 @@ type DService struct {
 }
 
 func (d DService) Equals(d2 Identifier) bool {
-        // log.Printf("About to compare DService %v with %v: result %v", d.GetId(), d2.GetId(), d.GetId() == d2.GetId())
+	// log.Printf("About to compare DService %v with %v: result %v", d.GetId(), d2.GetId(), d.GetId() == d2.GetId())
 
-        return d.GetId() == d2.GetId()
+	return d.GetId() == d2.GetId()
 }
 
 func (d DService) GetId() string {
