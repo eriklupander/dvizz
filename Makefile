@@ -17,6 +17,9 @@ fmt:
 test:
 	go test ./cmd/... -race && go test ./internal/... -race
 
+vet:
+	go vet ./cmd/... && go vet ./internal/...
+
 mock:
 	mockgen -source internal/pkg/comms/server.go -destination internal/pkg/comms/mock_comms/mock_comms.go -package mock_comms
 
