@@ -25,11 +25,6 @@ func NewPublisher(eventServer comms.IEventServer) *Publisher {
 	return &Publisher{filters: f, eventServer: eventServer}
 }
 
-func (p *Publisher) SetEventServer(_eventServer comms.IEventServer) {
-	p.eventServer = _eventServer
-	go p.eventServer.InitializeEventSystem()
-}
-
 /**
  * Will poll for Swarm Nodes changes every 5 seconds.
  */
@@ -178,6 +173,12 @@ func (p *Publisher) PublishTasks(client *docker.Client) {
 		lastTasks = currentTasks // Assign current as last for next iteration.
 	}
 }
+
+//func (p *Publisher) PublishNetworks(client *docker.Client) {
+//	networks, _ := client.ListNetworks()
+//
+//
+//}
 
 func marshal(intf interface{}) []byte {
 	data, _ := json.Marshal(intf)

@@ -35,7 +35,7 @@ circle {
 }
 
 circle.node {
-  fill: MistyRose;
+  fill: #0e90d2;
   stroke: #333;
   stroke-width: 1.5px;
 }
@@ -65,7 +65,20 @@ circle.container.shutdown {
 }
 
 text {
-  font: 20px sans-serif;
+  font: 16px sans-serif;
   pointer-events: none;
-  text-shadow: 0 1px 0 #fff, 1px 0 0 #fff, 0 -1px 0 #fff, -1px 0 0 #fff;
+  /* text-shadow: 0 1px 0 #fff, 1px 0 0 #fff, 0 -1px 0 #fff, -1px 0 0 #fff; */
+}
+
+text.two {
+  font: 10px sans-serif;
+}
+text.three {
+  font: 10px sans-serif;
+}
+text.four {
+  font: 10px sans-serif;
+}
+text.five {
+  font: 10px sans-serif;
 }

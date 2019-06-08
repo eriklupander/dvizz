@@ -9,10 +9,13 @@ $(binaries):
 
 build:
 	@echo "🐳"
-	docker build -t coulomb -f docker/Dockerfile .
+	docker build -t dvizz -f docker/Dockerfile .
 
 fmt:
-	find . -name '*.go' | grep -v vendor | xargs gofmt -w -s
+	find . -name '*.go' | grep -v vendor | grep -v build | xargs gofmt -w -s
+
+test:
+	go test ./cmd/... -race && go test ./internal/... -race
 
 mock:
 	mockgen -source internal/pkg/comms/server.go -destination internal/pkg/comms/mock_comms/mock_comms.go -package mock_comms

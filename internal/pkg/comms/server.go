@@ -2,10 +2,9 @@ package comms
 
 import (
 	"encoding/json"
-	"fmt"
 	docker "github.com/fsouza/go-dockerclient"
 	"github.com/gorilla/websocket"
-	"log"
+	"github.com/sirupsen/logrus"
 	"net/http"
 	"os"
 	"os/signal"
@@ -32,7 +31,7 @@ type EventServer struct {
 
 func (server *EventServer) init() {
 	server.upgrader = websocket.Upgrader{} // use default options
-	server.connectionRegistry = make([]*websocket.Conn, 0, 10)
+	server.connectionRegistry = make([]*websocket.Conn, 0)
 }
 
 func (server *EventServer) AddEventToSendQueue(data []byte) {
@@ -44,12 +43,13 @@ func (server *EventServer) InitializeEventSystem() {
 		panic("Cannot initialize event server, Docker client not assigned.")
 	}
 
-	fmt.Println("Starting WebSocket server at port 6969")
+	logrus.Info("Starting WebSocket server at port 6969")
 
 	http.HandleFunc("/start", server.registerChannel)
 	http.HandleFunc("/nodes", server.getNodes)
 	http.HandleFunc("/services", server.getServices)
 	http.HandleFunc("/tasks", server.getTasks)
+	http.HandleFunc("/networks", server.getNetworks)
 	http.HandleFunc("/containers", server.getContainers)
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		http.ServeFile(w, r, "static/"+r.URL.Path[1:])
@@ -57,13 +57,14 @@ func (server *EventServer) InitializeEventSystem() {
 
 	server.eventQueue = make(chan []byte, 100)
 	go server.startEventSender()
+	go server.pinger()
 
 	handleSigterm(func() {
 		server.Close()
 	})
-	fmt.Println("Registered sigterm handler")
+	logrus.Info("Registered sigterm handler")
 
-	fmt.Println("Starting WebSocket server")
+	logrus.Info("Starting WebSocket server")
 	err := http.ListenAndServe(":6969", nil)
 	if err != nil {
 		panic("ListenAndServe: " + err.Error())
@@ -71,11 +72,15 @@ func (server *EventServer) InitializeEventSystem() {
 }
 
 func (server *EventServer) Close() {
+	deletes := make([]int, 0)
 	for index, wsConn := range server.connectionRegistry {
 		adr := wsConn.RemoteAddr().String()
 		wsConn.Close()
-		server.remove(index)
-		fmt.Println("Gracefully shut down websocket connection to " + adr)
+		deletes = append(deletes, index)
+		logrus.Info("Gracefully shut down websocket connection to " + adr)
+	}
+	for _, deleteMe := range deletes {
+		server.connectionRegistry = remove(server.connectionRegistry, deleteMe)
 	}
 }
 
@@ -102,7 +107,22 @@ func (server *EventServer) getTasks(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		panic(err)
 	}
+
 	json, _ := json.Marshal(&tasks)
+	writeResponse(w, json)
+}
+
+func (server *EventServer) getNetworks(w http.ResponseWriter, r *http.Request) {
+	opts := docker.NetworkFilterOpts{
+		"scope": map[string]bool{
+			"swarm": true,
+		},
+	}
+	networks, err := server.Client.FilteredListNetworks(opts)
+	if err != nil {
+		panic(err)
+	}
+	json, _ := json.Marshal(&networks)
 	writeResponse(w, json)
 }
 
@@ -116,31 +136,68 @@ func (server *EventServer) getContainers(w http.ResponseWriter, r *http.Request)
 }
 
 func (server *EventServer) startEventSender() {
-	fmt.Println("Starting event sender goroutine...")
+	logrus.Infof("Starting event sender goroutine...")
 	for {
 		data := <-server.eventQueue
-		log.Println("About to send event: " + string(data))
+		logrus.Debugf("About to send event: " + string(data))
 		server.broadcastDEvent(data)
 		time.Sleep(time.Millisecond * 50)
 	}
 }
 
-func (server *EventServer) broadcastDEvent(data []byte) {
-	for index, wsConn := range server.connectionRegistry {
-		err := wsConn.WriteMessage(1, data)
-		if err != nil {
-			// Detected disconnected channel. Need to clean up.
-			fmt.Printf("Could not write to channel: %v", err)
-			wsConn.Close()
-			server.remove(index)
+func (server *EventServer) pinger() {
+	for {
+		time.Sleep(time.Second * 5)
+		deletes := make([]int, 0)
+		for index, wsConn := range server.connectionRegistry {
+			err := wsConn.WriteMessage(1, []byte("PING"))
+			if err != nil {
+				// Detected disconnected channel. Need to clean up.
+				err := wsConn.Close()
+				if err != nil {
+					logrus.Warnf("problem closing connection: %v", err)
+				}
+				deletes = append(deletes, index)
+			}
+		}
+		for _, deleteMe := range deletes {
+			server.connectionRegistry = remove(server.connectionRegistry, deleteMe)
+			logrus.Infof("Removed stale connection, new count is %v", len(server.connectionRegistry))
 		}
 	}
 }
 
-func (server *EventServer) remove(i int) {
-	server.connectionRegistry[len(server.connectionRegistry)-1], server.connectionRegistry[i] = server.connectionRegistry[i], server.connectionRegistry[len(server.connectionRegistry)-1]
-	server.connectionRegistry = server.connectionRegistry[:len(server.connectionRegistry)-1]
+func (server *EventServer) broadcastDEvent(data []byte) {
+	deletes := make([]int, 0)
+	for index, wsConn := range server.connectionRegistry {
+		err := wsConn.WriteMessage(1, data)
+		if err != nil {
+			// Detected disconnected channel. Need to clean up.
+			logrus.Errorf("Could not write to channel: %v", err)
+			wsConn.Close()
+			deletes = append(deletes, index)
+		}
+	}
+	for _, deleteMe := range deletes {
+		server.connectionRegistry = remove(server.connectionRegistry, deleteMe)
+	}
 }
+
+func remove(s []*websocket.Conn, i int) []*websocket.Conn {
+	s[i] = s[len(s)-1]
+	// We do not need to put s[i] at the end, as it will be discarded anyway
+	return s[:len(s)-1]
+}
+
+//func (server *EventServer) remove(i int) {
+//
+//	server.connectionRegistry[len(server.connectionRegistry)-1], server.connectionRegistry[i] = server.connectionRegistry[i], server.connectionRegistry[len(server.connectionRegistry)-1]
+//	server.connectionRegistry = server.connectionRegistry[:len(server.connectionRegistry)-1]
+//
+//	server.connectionRegistry[len(server.connectionRegistry)-1], server.connectionRegistry[i] = server.connectionRegistry[i], server.connectionRegistry[len(server.connectionRegistry)-1]
+//	server.connectionRegistry = server.connectionRegistry[:len(server.connectionRegistry)-1]
+//	logrus.Infof("A subscriber disconnected. Current number of subscribers are: %v", len(server.connectionRegistry))
+//}
 
 func (server *EventServer) registerChannel(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Path != "/start" {
@@ -156,10 +213,11 @@ func (server *EventServer) registerChannel(w http.ResponseWriter, r *http.Reques
 	header["Access-Control-Allow-Origin"] = []string{"*"}
 	c, err := server.upgrader.Upgrade(w, r, header)
 	if err != nil {
-		log.Print("upgrade:", err)
+		logrus.Errorf("upgrade: %v", err)
 		return
 	}
 	server.connectionRegistry = append(server.connectionRegistry, c)
+	logrus.Infof("A new subscriber connected from %v. Current number of subscribers are: %v", c.RemoteAddr().String(), len(server.connectionRegistry))
 }
 
 func writeResponse(w http.ResponseWriter, json []byte) {

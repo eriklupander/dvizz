@@ -4,6 +4,15 @@
 
 Inspired by the excellent [ManoMarks/docker-swarm-visualizer](https://github.com/ManoMarks/docker-swarm-visualizer), Dvizz provides an alternate way to render your Docker Swarm nodes, services and tasks using the D3 [Force Layout](https://github.com/d3/d3-3.x-api-reference/blob/master/Force-Layout.md).
 
+### Changes
+2019-06-07
+- Uses go modules
+- Resolved dependency hell with Sirupsen vs sirupsen
+- Uses gomock instead of testify mocks
+- Folder structure according to idiomatic go project layout
+- More use of structs with pointer receivers for better dependency injection etc.
+- Rewritten Dockerfile, better caching of dependencies etc.
+
 ![Dvizz image](https://raw.githubusercontent.com/eriklupander/dvizz/master/dvizz1.png)
 
 Legend:

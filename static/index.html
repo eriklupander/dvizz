@@ -1,634 +1,733 @@
 <!DOCTYPE html>
 <html>
-  <head>
-    <meta charset="utf-8" />
-    <link rel="stylesheet" type="text/css" href="dvizz.css" />
-    <link rel="stylesheet" type="text/css" href="local.css" />
+<head>
+    <meta charset="utf-8"/>
+    <link rel="stylesheet" type="text/css" href="dvizz.css"/>
+    <link rel="stylesheet" type="text/css" href="local.css"/>
     <script src="js/jquery/dist/jquery.min.js"></script>
     <script src="js/underscore/underscore-min.js"></script>
     <script src="js/d3/d3.min.js"></script>
-  </head>
-  <body>
-    <script>
-        (function() {
-            /* true : create single global service nodes
-               false: create one service node per service and node */
-            var config_global_services = false;
+</head>
+<body>
+<script>
+    (function () {
+        /* true : create single global service nodes
+           false: create one service node per service and node */
+        var config_global_services = false;
 
-            // A list of node objects.  We represent each node as {id: "name"}, but the D3
-            // system will decorate the node with addtional fields, notably x: and y: for
-            // the force layout and index" as part of the binding mechanism.
-            var nodes = [];
-            // A list of links.  We represent a link as {source: <node>, target: <node>},
-            // and in fact, the force layout mechanism expects those names.
-            var links = [];
-            // Create the force layout.  After a call to force.start(), the tick method will
-            // be called repeatedly until the layout "gels" in a stable configuration.
-            var force = d3.layout.force()
-                .nodes(nodes)
-                .links(links)
-                .linkDistance(80)
-                .charge(-800)
-                .on("tick", tick);
-            // add an SVG element inside the DOM's BODY element
-            var svg = d3.select("body").append("svg").attr("id", "dvizz-svg");
-            resize();
-            d3.select(window).on("resize", resize);
+        // A list of node objects.  We represent each node as {id: "name"}, but the D3
+        // system will decorate the node with addtional fields, notably x: and y: for
+        // the force layout and index" as part of the binding mechanism.
+        var nodes = [];
+        // A list of links.  We represent a link as {source: <node>, target: <node>},
+        // and in fact, the force layout mechanism expects those names.
+        var links = [];
 
-            function resize() {
-                force.size([$('#dvizz-svg').width(), $('#dvizz-svg').height()]).resume();
-            }
+        // A list of networks.
+        // var networks = [];
+        // $.getJSON("networks", null, function (data) {
+        //     $.each(data, function (index, item) {
+        //         networks.push({
+        //             "id": item.Id,
+        //             "name": item.Name,
+        //             "driver": item.Driver,
+        //             linktype: 'network',
+        //             nodetype: 'network'
+        //         });
+        //     })
+        // });
 
-            function update_graph() {
+        // Append each network as a "layer" to the HTML body
+        // for (var i=0; i < networks.length; i++) {
+        //     var svx = d3.select("body").append("svg").attr("id", networks[i].name);
+        // }
 
-                // Per-type markers, as they don't inherit styles.
-                svg.append("defs").selectAll("marker")
-                    .data(["runningon", "serviceinstance", "supporting"])
-                    .enter().append("marker")
-                    .attr("id", function(d) {
-                        return d;
-                    })
-                    .attr("viewBox", "-5 -5 10 10") //"0 -5 10 10")
-                    .attr("refX", function(d) {
-                        if (d === 'serviceinstance') {
-                            return 28;
-                        }
-                        return 48;
-                    })              // 28 or 48
-                    .attr("refY", 0) //-3)
-                    .attr("markerWidth", 6)
-                    .attr("markerHeight", 6)
-                    .attr("orient", "auto")
-                    .append("path")
-                    .attr("d", "M 0,0 m -5,-5 L 5,0 L -5,5 Z");    // M0,-5L10,0L0,5
+        // Create the force layout.  After a call to force.start(), the tick method will
+        // be called repeatedly until the layout "gels" in a stable configuration.
+        var force = d3.layout.force()
+            .nodes(nodes)
+            .links(links)
+            .linkDistance(120)
+            .charge(-1200)
+            .on("tick", tick);
 
-                // First update the links...
-                var link_update = svg.selectAll(".link").data(
-                    force.links(),
-                    function(d) {
-                        // console.log("Link update: " + JSON.stringify(d));
-                        return d.source.id + "-" + d.target.id;
+        // add an SVG element inside the DOM's BODY element
+        var svg = d3.select("body").append("svg").attr("id", "dvizz-svg");
+        resize();
+        d3.select(window).on("resize", resize);
+
+        function resize() {
+            force.size([$('#dvizz-svg').width(), $('#dvizz-svg').height()]).resume();
+        }
+
+        function update_graph() {
+
+            // Per-type markers, as they don't inherit styles.
+            svg.append("defs").selectAll("marker")
+                .data(["runningon", "serviceinstance", "supporting"])
+                .enter().append("marker")
+                .attr("id", function (d) {
+                    return d;
+                })
+                .attr("viewBox", "-5 -5 10 10")
+                .attr("refX", function (d) {
+                    if (d === 'serviceinstance') {
+                        return 28;
                     }
-                );
+                    return 48;
+                })              // 28 or 48
+                .attr("refY", 0) //-3)
+                .attr("markerWidth", 6)
+                .attr("markerHeight", 6)
+                .attr("orient", "auto")
+                .append("path")
+                .attr("d", "M 0,0 m -5,-5 L 5,0 L -5,5 Z");    // M0,-5L10,0L0,5
 
-                // link_update.enter() creates an SVG line element for each new link
-                // object.
-                link_update.enter()
-                    .append("line", ".node") // With insert instead of append, things go south...
-                    .attr("class", function(d) {
-                        return "link " + d.target.linktype;
-                    })
-                    .attr("marker-end", function(d) {
-                        return "url(#" + d.target.linktype + ")";
-                    });
-
-                // link_update.exit() processes link objects that have been removed
-                // by removing its corresponding SVG line element.
-                link_update.exit()
-                    .remove();
-
-                // Now update the nodes.
-                var node_update = svg.selectAll(".node").data(
-                    force.nodes(),
-                    function(d) {
-                        return d.id;
-                    }
-                );
-
-                // Create an SVG circle for each new node added to the graph.
-                var g = node_update.enter().append("g");
-                g.append("circle")
-                    .attr("id", function(d) {
-                        return d.id;
-                    })
-                    .attr("class", function(d) {
-                        return 'node ' + d.nodetype + ' ' + d.state;
-                    })
-                    .attr("r", function(d) {
-                        return sizeFromType(d)
-                    })
-                    .call(force.drag)
-                    .on("click", click);
-                g.append("text")
-                    .attr("x", 8)
-                    .attr("y", "1em")  // 31em
-                    .text(function(d) {
-                        return d.name;
-                    });
-
-                // Remove the SVG circle whenever a node vanishes from the node list.
-                node_update.exit().remove();
-
-                // Start calling the tick() method repeatedly to lay out the graph.
-                force.start();
-            }
-
-            function sizeFromType(d) {
-                if (typeof d.nodetype === 'undefined') {
-                    return 10;
+            // First update the links...
+            var link_update = svg.selectAll(".link").data(
+                force.links(),
+                function (d) {
+                    // console.log("Link update: " + JSON.stringify(d));
+                    return d.source.id + "-" + d.target.id;
                 }
-                switch (d.nodetype) {
+            );
+
+            // link_update.enter() creates an SVG line element for each new link
+            // object.
+            link_update.enter()
+                .append("line", ".node") // With insert instead of append, things go south...
+                .attr("class", function (d) {
+                    return "link " + d.target.linktype;
+                })
+                .attr("marker-end", function (d) {
+                    return "url(#" + d.target.linktype + ")";
+                });
+
+            // link_update.exit() processes link objects that have been removed
+            // by removing its corresponding SVG line element.
+            link_update.exit()
+                .remove();
+
+            // Now update the nodes.
+            var node_update = svg.selectAll(".node").data(
+                force.nodes(),
+                function (d) {
+                    return d.id;
+                }
+            );
+
+            // Create an SVG circle for each new node added to the graph.
+            var enter = node_update.enter();
+            var g = enter.append("g");
+            g.append("circle")
+                .attr("id", function (d) {
+                    return d.id;
+                })
+                .attr("class", function (d) {
+                    return 'node ' + d.nodetype + ' ' + d.state;
+                })
+                .attr("r", function (d) {
+                    return sizeFromType(d)
+                })
+                .call(force.drag)
+                .on("click", click);
+
+            g.append("text")
+                .attr("class", "one")
+                //.attr("x", 0)
+                //.attr("y", 12)  // 31em
+                .attr("text-anchor", "center")
+
+                    .text(function (d) {
+                    return d.name;
+                });
+
+            g.append("text")
+                .attr("class", "two")
+                //.attr("x", 16)
+                //.attr("y", 24)  // 31em
+                .text(function (d) {
+                    if (d.nodetype === 'container') {
+                        return "network: " + d.networks;
+                    } else if (d.nodetype === 'node') {
+                        return "CPUs: " + d.cpus;
+                    }
+                    return null;
+                });
+
+            g.append("text")
+                .attr("class", "three")
+                //.attr("x", 16)
+                //.attr("y", 36)  // 31em
+                .text(function (d) {
+                    if (d.nodetype === 'node') {
+                        return "Memory: " + d.memory + " mb";
+                    }
+                    return null;
+                });
+
+            // Remove the SVG circle whenever a node vanishes from the node list.
+            node_update.exit().remove();
+
+            // Start calling the tick() method repeatedly to lay out the graph.
+            force.start();
+        }
+
+        function sizeFromType(d) {
+            if (typeof d.nodetype === 'undefined') {
+                return 10;
+            }
+            switch (d.nodetype) {
                 case 'node':
                     return 40;
                 case 'service':
                     return 20;
                 case 'container':
                     return 10;
-                }
             }
+        }
 
-            function click(node) {
-                console.log("Clicked: " + JSON.stringify(node));
-            }
-
-
-            // This tick method is called repeatedly until the layout stabilizes.
-            //
-            // NOTE: the order in which we update nodes and links does NOT determine which
-            // gets drawn first -- the drawing order is determined by the ordering in the
-            // DOM.  See the notes under link_update.enter() above for one technique for
-            // setting the ordering in the DOM.
-            function tick() {
-                // Drawing the nodes: Update the cx, cy attributes of each circle element
-                // from the x, y fields of the corresponding node object.
-                svg.selectAll(".node")
-                    .attr("cx", function(d) {
-                        return d.x;
-                    })
-                    .attr("cy", function(d) {
-                        return d.y;
-                    });
-                // Drawing the links: Update the start and end points of each line element
-                // from the x, y fields of the corresponding source and target node objects.
-                svg.selectAll(".link")
-
-                // TODO we should calculate a shorter path to target so we can truncate when stuff starts to render on top.
-                    .attr("x1", function(d) {
-                        return d.source.x;
-                    })
-                    .attr("y1", function(d) {
-                        return d.source.y;
-                    })
-                    .attr("x2", function(d) {
-                        return d.target.x;
-                    })
-                    .attr("y2", function(d) {
-                        return d.target.y;
-                    });
-
-                svg.selectAll("text")
-                    .attr("x", function(d) {
-                        return d.x;
-                    })
-                    .attr("y", function(d) {
-                        return d.y;
-                    })
-            }
-
-            // ================================================================
+        function click(node) {
+            console.log("Clicked: " + JSON.stringify(node));
+        }
 
 
-            function loadData() {
-                var swarmNodes = [];
-                var tasks = [];
-                var services = [];
+        // This tick method is called repeatedly until the layout stabilizes.
+        //
+        // NOTE: the order in which we update nodes and links does NOT determine which
+        // gets drawn first -- the drawing order is determined by the ordering in the
+        // DOM.  See the notes under link_update.enter() above for one technique for
+        // setting the ordering in the DOM.
+        function tick() {
+            // Drawing the nodes: Update the cx, cy attributes of each circle element
+            // from the x, y fields of the corresponding node object.
+            svg.selectAll(".node")
+                .attr("cx", function (d) {
+                    return d.x;
+                })
+                .attr("cy", function (d) {
+                    return d.y;
+                });
+            // Drawing the links: Update the start and end points of each line element
+            // from the x, y fields of the corresponding source and target node objects.
+            svg.selectAll(".link")
 
-                $.getJSON("nodes", null, function(data) {
-                    // START SWARM NODES
-                    $.each(data, function(index, item) {
-                        swarmNodes.push({"id": item.ID, "name": item.Description.Hostname, "status": item.Status.State, linktype: 'supporting', nodetype: 'node'});
-                    });
-
-                    // START services
-                    $.getJSON("services", null, function(data) {
-
-                        $.each(data, function(index, item) {
-                            services.push({"id": item.ID, "name": item.Spec.Name})
-                        });
-
-                        // START TASKS
-                        $.getJSON("tasks", null, function(data) {
-                            $.each(data, function(index, item) {
-                                if (item.DesiredState !== 'running') {
-                                    return;
-                                }
-
-                                var name = item.Spec.ContainerSpec.Image;
-                                if(name.lastIndexOf('/') > -1) {
-                                    name = name.substr(name.lastIndexOf('/') + 1);
-                                }
-
-                                /* strip image hash */
-                                if(name.indexOf('@') > -1) {
-                                    name = name.slice(0, name.indexOf('@'));
-                                }
-
-                                /* strip implicit 'latest' tag */
-                                if(name.substr(-7) == ":latest") {
-                                    name = name.slice(0, -7);
-                                }
-
-                                /* global tasks do not have a slot id */
-                                if(typeof item.slot !== "undefined") {
-                                    name += '/' + item.Slot;
-                                }
-
-                                tasks.push({
-                                    "id": item.ID,
-                                    "image": item.Spec.ContainerSpec.Image,
-                                    "name": name,
-                                    "serviceId": item.ServiceID,
-                                    "serviceName": item.Spec.ContainerSpec.Image,
-                                    "nodeId": item.NodeID,
-                                    "status": item.Status.State
-                                })
-                            });
-                            buildLinks(swarmNodes, services, tasks);
-                        });
-                    });
-
+            // TODO we should calculate a shorter path to target so we can truncate when stuff starts to render on top.
+                .attr("x1", function (d) {
+                    return d.source.x;
+                })
+                .attr("y1", function (d) {
+                    return d.source.y;
+                })
+                .attr("x2", function (d) {
+                    return d.target.x;
+                })
+                .attr("y2", function (d) {
+                    return d.target.y;
                 });
 
+            svg.selectAll(".one")
+                .attr("text-anchor", "middle")
+                .attr("x", function (d) {
+                    return d.x;
+                })
+                .attr("y", function (d) {
+                    return d.y - 16;
+                });
+            svg.selectAll(".two")
+                .attr("x", function (d) {
+                    return d.x + 16;
+                })
+                .attr("y", function (d) {
+                    return d.y + 0;
+                });
+            svg.selectAll(".three")
+                .attr("x", function (d) {
+                    return d.x + 16;
+                })
+                .attr("y", function (d) {
+                    return d.y + 12;
+                });
 
-                function buildLinks(swarmNodes, services, tasks) {
-                    var links = [];
+        }
 
-                    for (var b = 0; b < swarmNodes.length; b++) {
+        // ================================================================
 
-                        var swarmNode = swarmNodes[b];
-                        swarmNodeHasLinks = false;
 
-                        for (var a = 0; a < services.length; a++) {
-                            var service = services[a];
-                            var taskAdded = false;
-                            for (var i = 0; i < tasks.length; i++) {
-                                var task = tasks[i];
+        function loadData() {
+            var swarmNodes = [];
+            var tasks = [];
+            var services = [];
 
-                                // If task not present on node, skip
-                                if (task.nodeId !== swarmNode.id) {
-                                    continue;
-                                }
+            $.getJSON("nodes", null, function (data) {
+                // START SWARM NODES
+                $.each(data, function (index, item) {
+                    swarmNodes.push({
+                        "id": item.ID,
+                        "name": item.Description.Hostname,
+                        "status": item.Status.State,
+                        linktype: 'supporting',
+                        nodetype: 'node',
+                        "cpus": item.Description.Resources.NanoCPUs / 1000000000,
+                        "memory": item.Description.Resources.MemoryBytes,
+                    });
+                });
 
-                                if (task.serviceId == service.id) {
-                                    var link = {
+                // START services
+                $.getJSON("services", null, function (data) {
+
+                    $.each(data, function (index, item) {
+                        services.push({"id": item.ID, "name": item.Spec.Name})
+                    });
+
+                    // START TASKS
+                    $.getJSON("tasks", null, function (data) {
+                        $.each(data, function (index, item) {
+                            if (item.DesiredState !== 'running') {
+                                return;
+                            }
+
+                            var name = item.Spec.ContainerSpec.Image;
+                            if (name.lastIndexOf('/') > -1) {
+                                name = name.substr(name.lastIndexOf('/') + 1);
+                            }
+
+                            /* strip image hash */
+                            if (name.indexOf('@') > -1) {
+                                name = name.slice(0, name.indexOf('@'));
+                            }
+
+                            /* strip implicit 'latest' tag */
+                            if (name.substr(-7) == ":latest") {
+                                name = name.slice(0, -7);
+                            }
+
+                            /* global tasks do not have a slot id */
+                            if (typeof item.slot !== "undefined") {
+                                name += '/' + item.Slot;
+                            }
+
+                            var networks = [];
+                            for (var x = 0; x < item.NetworksAttachments.length; x++) {
+                                var na = item.NetworksAttachments[x];
+                                networks.push({"id":na.Network.ID, "name": na.Network.Spec.Name});
+                            }
+
+                            tasks.push({
+                                "id": item.ID,
+                                "image": item.Spec.ContainerSpec.Image,
+                                "name": name,
+                                "serviceId": item.ServiceID,
+                                "serviceName": item.Spec.ContainerSpec.Image,
+                                "nodeId": item.NodeID,
+                                "status": item.Status.State,
+                                "networks": networks
+                            })
+                        });
+                        buildLinks(swarmNodes, services, tasks);
+                    });
+                });
+
+            });
+
+
+            function buildLinks(swarmNodes, services, tasks) {
+                var links = [];
+
+                for (var b = 0; b < swarmNodes.length; b++) {
+
+                    var swarmNode = swarmNodes[b];
+                    var swarmNodeHasLinks = false;
+
+                    for (var a = 0; a < services.length; a++) {
+                        var service = services[a];
+                        var taskAdded = false;
+                        for (var i = 0; i < tasks.length; i++) {
+                            var task = tasks[i];
+
+                            // If task not present on node, skip
+                            if (task.nodeId !== swarmNode.id) {
+                                continue;
+                            }
+
+                            if (task.serviceId === service.id) {
+                                var link = {
+                                    source: {
+                                        id: task.id,
+                                        name: task.name,
+                                        linktype: "serviceinstance",
+                                        status: task.status,
+                                        nodeId: task.nodeId,
+                                        networks: task.networks
+                                    },
+                                    target: {
+                                        /* Link task to node or to node-local-service? */
+                                        id: (config_global_services ? service.id : service.id + '-' + task.nodeId),
+                                        name: service.name,
+                                        linktype: "serviceinstance",
+                                        status: '',
+                                        nodeId: task.nodeId
+                                    }, // Services don't have statuses. Not here :)
+                                    src: 'container',
+                                    tgt: 'service'
+                                };
+                                links.push(link);
+
+                                /* link task directly to node if service nodes are global */
+                                if (config_global_services) {
+                                    links.push({
                                         source: {
                                             id: task.id,
                                             name: task.name,
-                                            linktype: "serviceinstance",
+                                            linktype: "supporting",
                                             status: task.status,
                                             nodeId: task.nodeId
                                         },
                                         target: {
-                                            /* Link task to node or to node-local-service? */
-                                            id: (config_global_services ? service.id : service.id + '-' + task.nodeId),
-                                            name: service.name,
-                                            linktype: "serviceinstance",
+                                            id: task.nodeId,
+                                            name: swarmNode.name,
+                                            linktype: "supporting",
                                             status: '',
                                             nodeId: task.nodeId
                                         }, // Services don't have statuses. Not here :)
                                         src: 'container',
-                                        tgt: 'service'
-                                    };
-                                    links.push(link);
-
-                                    /* link task directly to node if service nodes are global */
-                                    if(config_global_services) {
-                                        links.push({
-                                            source: {
-                                                id: task.id,
-                                                name: task.name,
-                                                linktype: "supporting",
-                                                status: task.status,
-                                                nodeId: task.nodeId
-                                            },
-                                            target: {
-                                                id: task.nodeId,
-                                                name: swarmNode.name,
-                                                linktype: "supporting",
-                                                status: '',
-                                                nodeId: task.nodeId
-                                            }, // Services don't have statuses. Not here :)
-                                            src: 'container',
-                                            tgt: 'node'
-                                        });
-                                    }
-
-                                    taskAdded = true;
-                                }
-                            }
-
-                            // Add link from service to swarm node
-                            if (taskAdded) {
-                                /* link local service to node */
-                                if(!config_global_services) {
-                                    links.push({
-                                        source: {
-                                            id: service.id + '-' + swarmNode.id,
-                                            name: service.name,
-                                            linktype: 'supporting',
-                                            nodetype: 'service',
-                                            status: ''
-                                        },
-                                        target: swarmNode,
-                                        src: 'service',
                                         tgt: 'node'
                                     });
                                 }
-                                swarmNodeHasLinks = true;
+
+                                taskAdded = true;
                             }
-
                         }
 
-                        // Hack! If the swarm node has no tasks / services, we need to add it manually.
-                        if (!swarmNodeHasLinks) {
-                             nodes.push(swarmNode);
+                        // Add link from service to swarm node
+                        if (taskAdded) {
+                            /* link local service to node */
+                            if (!config_global_services) {
+                                links.push({
+                                    source: {
+                                        id: service.id + '-' + swarmNode.id,
+                                        name: service.name,
+                                        linktype: 'supporting',
+                                        nodetype: 'service',
+                                        status: ''
+                                    },
+                                    target: swarmNode,
+                                    src: 'service',
+                                    tgt: 'node'
+                                });
+                            }
+                            swarmNodeHasLinks = true;
                         }
 
                     }
 
-                    addToGraph(links);
+                    // Hack! If the swarm node has no tasks / services, we need to add it manually.
+                    if (!swarmNodeHasLinks) {
+                        nodes.push(swarmNode);
+                    }
+                }
+                addToGraph(links);
+            }
+        }
+
+        function addToGraph(mylinks) {
+            var xnodes = {};
+
+            // Compute the distinct nodes from the links.
+            mylinks.forEach(function (link) {
+                link.source =
+                    xnodes[link.source.id] || (xnodes[link.source.id] = {
+                        id: link.source.id,
+                        name: link.source.name,
+                        nodetype: link.src,
+                        linktype: link.source.linktype,
+                        state: link.source.status,
+                        nodeId: link.source.nodeId,
+                        networks: flatten(link.source.networks),
+                        cpus: link.source.cpus,
+                        memory: link.source.memory
+                    });
+                link.target =
+                    xnodes[link.target.id] || (xnodes[link.target.id] = {
+                        id: link.target.id,
+                        name: link.target.name,
+                        nodetype: link.tgt,
+                        linktype: link.target.linktype,
+                        state: link.target.status,
+                        nodeId: link.target.nodeId,
+                        networks: flatten(link.target.networks),
+                        cpus: link.target.cpus,
+                        memory: link.target.memory / 1000000
+                    });
+            });
+
+
+            var added = [];
+
+            for (var a = 0; a < mylinks.length; a++) {
+                if (!contains(added, mylinks[a].source.id)) {
+                    nodes.push(mylinks[a].source);
+                    added.push(mylinks[a].source.id);
+                }
+                if (!contains(added, mylinks[a].target.id)) {
+                    nodes.push(mylinks[a].target);
+                    added.push(mylinks[a].target.id);
+                }
+                // Push link.
+                links.push({source: mylinks[a].source, target: mylinks[a].target});
+
+            }
+            update_graph();
+
+        }
+
+        loadData();
+
+        function contains(a, obj) {
+            for (var i = 0; i < a.length; i++) {
+                if (a[i] === obj) {
+                    return true;
                 }
             }
+            return false;
+        }
 
-            function addToGraph(mylinks) {
-                var xnodes = {};
-
-                // Compute the distinct nodes from the links.
-                mylinks.forEach(function(link) {
-                    link.source =
-                        xnodes[link.source.id] || (xnodes[link.source.id] = {
-                            id: link.source.id,
-                            name: link.source.name,
-                            nodetype: link.src,
-                            linktype: link.source.linktype,
-                            state: link.source.status,
-                            nodeId: link.source.nodeId
-                        });
-                    link.target =
-                        xnodes[link.target.id] || (xnodes[link.target.id] = {
-                            id: link.target.id,
-                            name: link.target.name,
-                            nodetype: link.tgt,
-                            linktype: link.target.linktype,
-                            state: link.target.status,
-                            nodeId: link.target.nodeId
-                        });
-                });
-
-
-                var added = [];
-
-                for (var a = 0; a < mylinks.length; a++) {
-                    if (!contains(added, mylinks[a].source.id)) {
-                        nodes.push(mylinks[a].source);
-                        added.push(mylinks[a].source.id);
-                    }
-                    if (!contains(added, mylinks[a].target.id)) {
-                        nodes.push(mylinks[a].target);
-                        added.push(mylinks[a].target.id);
-                    }
-                    // Push link.
-                    links.push({source: mylinks[a].source, target: mylinks[a].target});
-
+        function flatten(arr) {
+            if (arr != null && typeof arr !== 'undefined' && arr.length > 0) {
+                var str = "";
+                for (var i = 0; i < arr.length; i++) {
+                    str += arr[i].name + ', '
                 }
-                update_graph();
+                return str.substr(0, str.length - 2);
+            }
+            return "";
+        }
 
+
+        // Start websocket code
+        ws = new WebSocket("ws://" + window.location.host + window.location.pathname + "start");
+        ws.onmessage = function (e) {
+            var evt = JSON.parse(e.data);
+            console.log(e.data);
+            handleWebSocketMessage(evt);
+        };
+
+        function handleWebSocketMessage(evt) {
+            // When a NEW task has been added
+            if (evt.action === 'start' && evt.type === 'task') {
+                handleNewTaskEvent(evt);
             }
 
-            loadData();
-
-            function contains(a, obj) {
-                for (var i = 0; i < a.length; i++) {
-                    if (a[i] === obj) {
-                        return true;
-                    }
-                }
-                return false;
+            // When a TASK has been stopped / deleted
+            if (evt.action === 'stop' && evt.type === 'task') {
+                handleRemoveTaskEvent(evt);
             }
 
-
-            // Start websocket code
-            ws = new WebSocket("ws://" + window.location.host + window.location.pathname + "start");
-            ws.onmessage = function(e) {
-                var evt = JSON.parse(e.data);
-                console.log(e.data);
-                handleWebSocketMessage(evt);
-            };
-
-            function handleWebSocketMessage(evt) {
-                // When a NEW task has been added
-                if (evt.action === 'start' && evt.type === 'task') {
-                    handleNewTaskEvent(evt);
+            // Swarm Node updates
+            if (evt.action === 'update' && evt.type === 'node') {
+                if (evt.dnode.state === 'up') {
+                    handleNewNodeEvent(evt);
                 }
-
-                // When a TASK has been stopped / deleted
-                if (evt.action === 'stop' && evt.type === 'task') {
-                    handleRemoveTaskEvent(evt);
-                }
-
-                // Swarm Node updates
-                if (evt.action === 'update' && evt.type === 'node') {
-                    if (evt.dnode.state === 'up') {
-                        handleNewNodeEvent(evt);
-                    }
-                    if (evt.dnode.state === 'down') {
-                        handleRemoveNodeEvent(evt);
-                    }
-                }
-
-                // When a TASK has been stopped / deleted
-                if (evt.action === 'stop' && evt.type === 'node') {
+                if (evt.dnode.state === 'down') {
                     handleRemoveNodeEvent(evt);
                 }
+            }
 
-                // A destroy means the entire service was deleted...
-                if (evt.action === 'stop' && evt.type === 'service') {
-                    handleDestroyServiceEvent(evt);
-                }
+            // When a TASK has been stopped / deleted
+            if (evt.action === 'stop' && evt.type === 'node') {
+                handleRemoveNodeEvent(evt);
+            }
 
-                // State change of a Node, typically: allocated -> preparing -> running
-                if (evt.action === 'update' && evt.type === 'task') {
-                    handleTaskStateUpdate(evt);
+            // A destroy means the entire service was deleted...
+            if (evt.action === 'stop' && evt.type === 'service') {
+                handleDestroyServiceEvent(evt);
+            }
+
+            // State change of a Node, typically: allocated -> preparing -> running
+            if (evt.action === 'update' && evt.type === 'task') {
+                handleTaskStateUpdate(evt);
+            }
+        }
+
+        <!-- Start event handler functions -->
+        function handleNewNodeEvent(evt) {
+            nodes.push({id: evt.dnode.id, nodetype: 'node', name: evt.dnode.name, linktype: 'supporting'});
+            update_graph();
+        }
+
+        function handleRemoveNodeEvent(evt) {
+
+            // Remove all service nodes and links pointing at the swarm node
+            for (var b = 0; b < links.length; b++) {
+                if (links[b].target.id === evt.dnode.id) {
+
+                    // Delete service node pointing at swarm node.
+                    deleteNodeById(nodes, links[b].source.id);
+
+                    // Delete the link
+                    links.splice(b, 1);
                 }
             }
 
-            <!-- Start event handler functions -->
-            function handleNewNodeEvent(evt) {
-                nodes.push({id: evt.dnode.id, nodetype: 'node', name: evt.dnode.name, linktype: 'supporting'});
-                update_graph();
+            // Delete the actual swarm node
+            deleteNodeById(nodes, evt.dnode.id);
+            update_graph();
+            $("g:not(:has('>circle'))").remove();
+        }
+
+        function handleTaskStateUpdate(evt) {
+            // Cosmetic changes can be applied directly on the DOM instead of through D3 update cycle.
+            $('#' + evt.id).attr('class', 'node container ' + evt.state);
+            var node = findNodeById(nodes, evt.id);
+            if (notNull(node)) {
+                node.state = evt.state;
             }
+        }
 
-            function handleRemoveNodeEvent(evt) {
+        function handleDestroyServiceEvent(evt) {
+            // Destroying a service removes it from ALL nodes. Find all nodes.
+            var swarmNodes = findNodesByType(nodes);
+            _.each(swarmNodes, function (swarmNode) {
+                var serviceId = evt.dservice.id + '-' + swarmNode.id;
 
-                // Remove all service nodes and links pointing at the swarm node
+
                 for (var b = 0; b < links.length; b++) {
-                    if (links[b].target.id === evt.dnode.id) {
-
-                        // Delete service node pointing at swarm node.
-                        deleteNodeById(nodes, links[b].source.id);
-
-                        // Delete the link
+                    if (links[b].source.id === serviceId) {
                         links.splice(b, 1);
                     }
                 }
+                deleteNodeById(nodes, serviceId);
+            });
 
-                // Delete the actual swarm node
-                deleteNodeById(nodes, evt.dnode.id);
-                update_graph();
-                $("g:not(:has('>circle'))").remove();
-            }
+            update_graph();
 
-            function handleTaskStateUpdate(evt) {
-                // Cosmetic changes can be applied directly on the DOM instead of through D3 update cycle.
-                $('#' + evt.id).attr('class', 'node container ' + evt.state);
-                var node = findNodeById(nodes, evt.id);
-                if (notNull(node)) {
-                    node.state = evt.state;
+            // Ugly hack to remove texts that doesn't want to be removed
+            $("g:not(:has('>circle'))").remove();
+        }
+
+
+        function handleRemoveTaskEvent(evt) {
+            console.log("Removing task");
+
+            // Find node to remove
+            var id = evt.dtask.id;
+            var node = findNodeById(nodes, id);
+
+            // Can't find node? Just return
+            if (isNull(node)) return;
+
+            // Remove unused links
+            for (var b = 0; b < links.length; b++) {
+                if (links[b].source.id === id || links[b].target.id === id) {
+                    links.splice(b, 1);
+                    break;
                 }
             }
 
-            function handleDestroyServiceEvent(evt) {
-                // Destroying a service removes it from ALL nodes. Find all nodes.
-                var swarmNodes = findNodesByType(nodes);
-                _.each(swarmNodes, function(swarmNode) {
-                    var serviceId = evt.dservice.id + '-' + swarmNode.id;
+            // Delete the node from nodes
+            deleteNodeById(nodes, id);
+            update_graph();
+
+            // Ugly hack to remove texts that doesn't want to be removed
+            $("g:not(:has('>circle'))").remove();
+        }
 
 
-                    for (var b = 0; b < links.length; b++) {
-                        if (links[b].source.id === serviceId) {
-                            links.splice(b, 1);
-                        }
-                    }
-                    deleteNodeById(nodes, serviceId);
-                });
+        function handleNewTaskEvent(evt) {
+            console.log("Adding new task");
+            // A service instance node is always identified by its own ID and the node we're dealing with.
+            var serviceId = evt.dtask.serviceId + '-' + evt.dtask.nodeId;
 
-                update_graph();
+            // this MAY be a new service coming up with (n) replicas. Check if we have a service node for the serviceId
+            var serviceNode = findNodeById(nodes, serviceId);
 
-                // Ugly hack to remove texts that doesn't want to be removed
-                $("g:not(:has('>circle'))").remove();
-            }
+            // If the service didn't exist, we create a new node for the service first...
+            if (isNull(serviceNode)) {
+                // Find the swarm node...
+                var swarmNode = findNodeById(nodes, evt.dtask.nodeId);
 
-
-            function handleRemoveTaskEvent(evt) {
-                console.log("Removing task");
-
-                // Find node to remove
-                var id = evt.dtask.id;
-                var node = findNodeById(nodes, id);
-
-                // Can't find node? Just return
-                if (isNull(node)) return;
-
-                // Remove unused links
-                for (var b = 0; b < links.length; b++) {
-                    if (links[b].source.id === id || links[b].target.id === id) {
-                        links.splice(b, 1);
-                        break;
-                    }
-                }
-
-                // Delete the node from nodes
-                deleteNodeById(nodes, id);
-                update_graph();
-
-                // Ugly hack to remove texts that doesn't want to be removed
-                $("g:not(:has('>circle'))").remove();
-            }
-
-
-            function handleNewTaskEvent(evt) {
-                console.log("Adding new task");
-                // A service instance node is always identified by its own ID and the node we're dealing with.
-                var serviceId = evt.dtask.serviceId + '-' + evt.dtask.nodeId;
-
-                // this MAY be a new service coming up with (n) replicas. Check if we have a service node for the serviceId
-                var serviceNode = findNodeById(nodes, serviceId);
-
-                // If the service didn't exist, we create a new node for the service first...
-                if (isNull(serviceNode)) {
-                    // Find the swarm node...
-                    var swarmNode = findNodeById(nodes, evt.dtask.nodeId);
-
-                    // Push the new service node.
-                    // TODO determine linktype from service name
-                    var linktype = resolveLinkTypeFromName(evt.dtask.name);
-                    var newService = {
-                        id: serviceId,
-                        name: serviceId.substr(0, 12),
-                        nodetype: 'service',
-                        linktype: linktype,
-                        state: ''
-                    };
-                    nodes.push(newService);
-
-                    // Push it's link to the swarm node
-                    links.push({source: newService, target: swarmNode});
-                }
-
-                // Construct the new TASK node
-                var newNode = {
-                    id: evt.dtask.id,
-                    name: evt.dtask.name.slice(0, evt.dtask.name.indexOf('@')) + evt.dtask.name.substring(evt.dtask.name.lastIndexOf('.')),
-                    nodetype: 'container',
-                    linktype: 'serviceinstance',
-                    state: evt.dtask.status
+                // Push the new service node.
+                // TODO determine linktype from service name
+                var linktype = resolveLinkTypeFromName(evt.dtask.name);
+                var newService = {
+                    id: serviceId,
+                    name: serviceId.substr(0, 12),
+                    nodetype: 'service',
+                    linktype: linktype,
+                    state: ''
                 };
+                nodes.push(newService);
 
-                // Find service so we can create link
-                if (isNull(serviceNode)) {
-                    serviceNode = findNodeById(nodes, serviceId);
+                // Push it's link to the swarm node
+                links.push({source: newService, target: swarmNode});
+            }
+
+            // Construct the new TASK node
+            var newNode = {
+                id: evt.dtask.id,
+                name: evt.dtask.name.slice(0, evt.dtask.name.indexOf('@')) + evt.dtask.name.substring(evt.dtask.name.lastIndexOf('.')),
+                nodetype: 'container',
+                linktype: 'serviceinstance',
+                state: evt.dtask.status,
+                networks: evt.dtask.networks
+            };
+
+            // Find service so we can create link
+            if (isNull(serviceNode)) {
+                serviceNode = findNodeById(nodes, serviceId);
+            }
+
+            if (isNull(serviceNode)) {
+                console.log("ERROR ERROR ERROR: Unable to create service node for serviceId: " + serviceId +
+                    " when creating task " + JSON.stringify(evt));
+            }
+
+            nodes.push(newNode);
+            links.push({source: newNode, target: serviceNode});
+            update_graph();
+        }
+
+        function resolveLinkTypeFromName(name) {
+            if (name.indexOf("service") > -1) {
+                return "serviceinstance";
+            } else {
+                return "supporting";
+            }
+        }
+
+        <!-- Start helper functions -->
+        function findNodeById(nodes, id) {
+            var node = _.find(nodes, function (node) {
+                return node.id === id;
+            });
+
+            if (isNull(node)) {
+                console.log("findNodeById(nodes, '" + id + "') didn't find anything!!!!!!!!!!");
+            }
+            return node;
+        }
+
+        function findNodesByType(nodes, type) {
+            return _.where(nodes, {nodetype: 'node'});
+        }
+
+        function deleteNodeById(nodes, id) {
+            for (var a = 0; a < nodes.length; a++) {
+                if (nodes[a].id === id) {
+                    nodes.splice(a, 1);
+                    break;
                 }
-
-                if (isNull(serviceNode)) {
-                    console.log("ERROR ERROR ERROR: Unable to create service node for serviceId: " + serviceId +
-                        " when creating task " + JSON.stringify(evt));
-                }
-
-                nodes.push(newNode);
-                links.push({source: newNode, target: serviceNode});
-                update_graph();
             }
+        }
 
-            function resolveLinkTypeFromName(name) {
-                if (name.indexOf("service") > -1) {
-                    return "serviceinstance";
-                } else {
-                    return "supporting";
-                }
-            }
+        function notNull(obj) {
+            return obj != null && typeof obj !== 'undefined';
+        }
 
-            <!-- Start helper functions -->
-            function findNodeById(nodes, id) {
-                var node = _.find(nodes, function(node) {
-                    return node.id === id;
-                });
-
-                if (isNull(node)) {
-                    console.log("findNodeById(nodes, '" + id + "') didn't find anything!!!!!!!!!!");
-                }
-                return node;
-            }
-
-            function findNodesByType(nodes, type) {
-                return _.where(nodes, {nodetype: 'node'});
-            }
-
-            function deleteNodeById(nodes, id) {
-                for (var a = 0; a < nodes.length; a++) {
-                    if (nodes[a].id === id) {
-                        nodes.splice(a, 1);
-                        break;
-                    }
-                }
-            }
-
-            function notNull(obj) {
-                return obj != null && typeof obj !== 'undefined';
-            }
-            function isNull(obj) {
-                return obj == null || typeof obj === 'undefined';
-            }
-          })();
-    </script>
-  </body>
+        function isNull(obj) {
+            return obj == null || typeof obj === 'undefined';
+        }
+    })();
+</script>
+</body>
 </html>

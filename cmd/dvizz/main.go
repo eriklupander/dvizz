@@ -21,38 +21,74 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
-package dvizz
+package main
 
 import (
+	"github.com/eriklupander/dvizz/cmd"
 	"github.com/eriklupander/dvizz/internal/pkg/comms"
 	"github.com/eriklupander/dvizz/internal/pkg/service"
 	docker "github.com/fsouza/go-dockerclient"
-	"log"
+	"github.com/sirupsen/logrus"
+	fmtlog "log"
+	"strings"
 	"sync"
 )
 
 func main() {
-	log.Println("Starting dvizz!")
+	configureLogging(cmd.DefaultConfiguration())
+	logrus.Println("Starting dvizz!")
 	dockerClient, err := docker.NewClientFromEnv()
 	if err != nil {
 		panic(err)
 	}
 
-	publisher := service.NewPublisher(&comms.EventServer{Client: dockerClient})
+	eventServer := &comms.EventServer{Client: dockerClient}
+	go eventServer.InitializeEventSystem()
+
+	publisher := service.NewPublisher(eventServer)
+
+	//	go publisher.PublishNetworks(dockerClient)
 
 	go publisher.PublishTasks(dockerClient)
-	log.Println("Initialized publishTasks")
+	logrus.Println("Initialized publishTasks")
 
 	go publisher.PublishServices(dockerClient)
-	log.Println("Initialized publishServices")
+	logrus.Println("Initialized publishServices")
 
 	go publisher.PublishNodes(dockerClient)
-	log.Println("Initialized publishNodes")
+	logrus.Println("Initialized publishNodes")
 
 	// Block...
-	log.Println("Waiting at block...")
+	logrus.Println("Waiting at block...")
 
 	wg := sync.WaitGroup{} // Use a WaitGroup to block main() exit
 	wg.Add(1)
 	wg.Wait()
+}
+
+// ConfigureLogging Configure logging for all cmd.
+func configureLogging(configuration *cmd.GlobalConfiguration) {
+	// configure default log flags
+	fmtlog.SetFlags(fmtlog.Lshortfile | fmtlog.LstdFlags)
+	// configure log level
+	// an explicitly defined log level always has precedence. if none is
+	// given and debug mode is disabled, the default is ERROR, and DEBUG
+	// otherwise.
+	levelStr := strings.ToLower(configuration.LogLevel)
+
+	if levelStr == "" {
+		levelStr = "error"
+	}
+	level, err := logrus.ParseLevel(levelStr)
+	if err != nil {
+		fmtlog.Println("Error getting level", err)
+	}
+	logrus.SetLevel(level)
+
+	ttyOK := false
+	logrus.SetFormatter(&logrus.TextFormatter{
+		ForceColors:   ttyOK,
+		DisableColors: false,
+		FullTimestamp: true,
+	})
 }

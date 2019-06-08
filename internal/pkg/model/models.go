@@ -45,9 +45,11 @@ type DTaskStateUpdate struct {
 }
 
 type DNode struct {
-	Id    string `json:"id"`
-	Name  string `json:"name"`
-	State string `json:"state"`
+	Id     string `json:"id"`
+	Name   string `json:"name"`
+	State  string `json:"state"`
+	Memory string `json:"memory"`
+	CPUs   string `json:"cpus"`
 }
 
 type DNodeEvent struct {
@@ -67,11 +69,17 @@ func (d DNode) Equals(d2 Identifier) bool {
 }
 
 type DTask struct {
-	Id        string `json:"id"`
-	Name      string `json:"name"`
-	Status    string `json:"status"`
-	ServiceId string `json:"serviceId"`
-	NodeId    string `json:"nodeId"`
+	Id        string     `json:"id"`
+	Name      string     `json:"name"`
+	Status    string     `json:"status"`
+	ServiceId string     `json:"serviceId"`
+	NodeId    string     `json:"nodeId"`
+	Networks  []DNetwork `json:"networks"`
+}
+
+type DNetwork struct {
+	Id   string `json:"id"`
+	Name string `json:"name"`
 }
 
 func (d DTask) Equals(d2 Identifier) bool {
