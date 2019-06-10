@@ -3,21 +3,18 @@ package service
 import (
 	"github.com/docker/docker/api/types/swarm"
 	. "github.com/smartystreets/goconvey/convey"
+	"github.com/stretchr/testify/assert"
 	"testing"
 )
 
 func TestSanitizeTaskNameHavingLatestSuffix(t *testing.T) {
 	name := sanitizeTaskName("some/name:latest@sha256.1")
-	if name != "some/name" {
-		t.Error("Expected 'some/name', got " + name)
-	}
+	assert.Equal(t, "name", name)
 }
 
 func TestSanitizeTaskNameWithoutSuffix(t *testing.T) {
 	name := sanitizeTaskName("some/name.1")
-	if name != "some/name.1" {
-		t.Error("Expected 'some/name.1', got " + name)
-	}
+	assert.Equal(t, "name.1", name)
 }
 
 func TestConvertTasks(t *testing.T) {
@@ -41,9 +38,7 @@ func TestConvertTasks(t *testing.T) {
 	arr = append(arr, task)
 
 	tasks := convTasks(arr)
-	if tasks[0].Name != "image/name.2" {
-		t.Error("Expected task name: 'image/name.2', got: " + tasks[0].Name)
-	}
+	assert.Equal(t, "name.2", tasks[0].Name)
 }
 
 func TestConvertNodes(t *testing.T) {
