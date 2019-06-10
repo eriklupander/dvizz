@@ -47,8 +47,6 @@ func main() {
 
 	publisher := service.NewPublisher(eventServer)
 
-	//	go publisher.PublishNetworks(dockerClient)
-
 	go publisher.PublishTasks(dockerClient)
 	logrus.Println("Initialized publishTasks")
 

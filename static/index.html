@@ -669,7 +669,7 @@
                 nodetype: 'container',
                 linktype: 'serviceinstance',
                 state: evt.dtask.status,
-                networks: evt.dtask.networks
+                networks: flatten(evt.dtask.networks)
             };
 
             // Find service so we can create link

@@ -7,6 +7,6 @@ type GlobalConfiguration struct {
 func DefaultConfiguration() *GlobalConfiguration {
 
 	return &GlobalConfiguration{
-		LogLevel: "debug",
+		LogLevel: "info",
 	}
 }

@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"sort"
 	"strconv"
 	"syscall"
 	"time"
@@ -160,6 +161,13 @@ func (server *EventServer) pinger() {
 				deletes = append(deletes, index)
 			}
 		}
+
+		// to mitigate problems with indicies not being updated when deleting multiple entries, we sort deleteMe
+		// DESC so the highest is deleted first.
+		sort.Slice(deletes, func(i, j int) bool {
+			return deletes[i] > deletes[j]
+		})
+
 		for _, deleteMe := range deletes {
 			server.connectionRegistry = remove(server.connectionRegistry, deleteMe)
 			logrus.Infof("Removed stale connection, new count is %v", len(server.connectionRegistry))
@@ -178,6 +186,13 @@ func (server *EventServer) broadcastDEvent(data []byte) {
 			deletes = append(deletes, index)
 		}
 	}
+
+	// to mitigate problems with indicies not being updated when deleting multiple entries, we sort deleteMe
+	// DESC so the highest is deleted first.
+	sort.Slice(deletes, func(i, j int) bool {
+		return deletes[i] > deletes[j]
+	})
+
 	for _, deleteMe := range deletes {
 		server.connectionRegistry = remove(server.connectionRegistry, deleteMe)
 	}
@@ -188,16 +203,6 @@ func remove(s []*websocket.Conn, i int) []*websocket.Conn {
 	// We do not need to put s[i] at the end, as it will be discarded anyway
 	return s[:len(s)-1]
 }
-
-//func (server *EventServer) remove(i int) {
-//
-//	server.connectionRegistry[len(server.connectionRegistry)-1], server.connectionRegistry[i] = server.connectionRegistry[i], server.connectionRegistry[len(server.connectionRegistry)-1]
-//	server.connectionRegistry = server.connectionRegistry[:len(server.connectionRegistry)-1]
-//
-//	server.connectionRegistry[len(server.connectionRegistry)-1], server.connectionRegistry[i] = server.connectionRegistry[i], server.connectionRegistry[len(server.connectionRegistry)-1]
-//	server.connectionRegistry = server.connectionRegistry[:len(server.connectionRegistry)-1]
-//	logrus.Infof("A subscriber disconnected. Current number of subscribers are: %v", len(server.connectionRegistry))
-//}
 
 func (server *EventServer) registerChannel(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Path != "/start" {

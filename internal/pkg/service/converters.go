@@ -75,7 +75,13 @@ func convTasks(tasks []swarm.Task) []DTask {
 func sanitizeTaskName(name string) string {
 	index := strings.Index(name, ":latest")
 	if index > -1 {
-		return name[:index]
+		name = name[:index]
+	}
+
+	// Remove everything before any leading slash
+	index = strings.Index(name, "/")
+	if index > -1 && index != len(name)-1 {
+		name = name[index+1:]
 	}
 	return name
 }
