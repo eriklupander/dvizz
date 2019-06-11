@@ -51,6 +51,8 @@ func (server *EventServer) InitializeEventSystem() {
 	http.HandleFunc("/services", server.getServices)
 	http.HandleFunc("/tasks", server.getTasks)
 	http.HandleFunc("/networks", server.getNetworks)
+	http.HandleFunc("/networkreport", server.getNetworkReport)
+	http.HandleFunc("/servicereport", server.getServiceReport)
 	http.HandleFunc("/containers", server.getContainers)
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		http.ServeFile(w, r, "static/"+r.URL.Path[1:])
@@ -63,7 +65,6 @@ func (server *EventServer) InitializeEventSystem() {
 	handleSigterm(func() {
 		server.Close()
 	})
-	logrus.Info("Registered sigterm handler")
 
 	logrus.Info("Starting WebSocket server")
 	err := http.ListenAndServe(":6969", nil)
@@ -134,6 +135,119 @@ func (server *EventServer) getContainers(w http.ResponseWriter, r *http.Request)
 	}
 	json, _ := json.Marshal(&containers)
 	writeResponse(w, json)
+}
+
+func (server *EventServer) getNetworkReport(w http.ResponseWriter, r *http.Request) {
+
+	opts := docker.NetworkFilterOpts{
+		"scope": map[string]bool{
+			"swarm": true,
+		},
+	}
+	networks, err := server.Client.FilteredListNetworks(opts)
+	if err != nil {
+		panic(err)
+	}
+
+	services, err := server.Client.ListServices(docker.ListServicesOptions{})
+	if err != nil {
+		panic(err)
+	}
+
+	sm := make(map[string]string)
+	for _, s := range services {
+		sm[s.ID] = s.Spec.Name
+	}
+
+	report := make([]NetworkReport, 0)
+
+	for _, n := range networks {
+		nr := NetworkReport{ID: n.ID, Name: n.Name, Services: make([]string, 0)}
+		for _, s := range services {
+			for _, na := range s.Spec.TaskTemplate.Networks {
+				if na.Target == n.ID {
+					nr.Services = append(nr.Services, sm[s.ID])
+				}
+			}
+		}
+		report = append(report, nr)
+	}
+
+	data, _ := json.Marshal(report)
+
+	writeResponse(w, data)
+}
+
+func (server *EventServer) getServiceReport(w http.ResponseWriter, r *http.Request) {
+
+	opts := docker.NetworkFilterOpts{
+		"scope": map[string]bool{
+			"swarm": true,
+		},
+	}
+	networks, err := server.Client.FilteredListNetworks(opts)
+	if err != nil {
+		panic(err)
+	}
+
+	services, err := server.Client.ListServices(docker.ListServicesOptions{})
+	if err != nil {
+		panic(err)
+	}
+
+	sm := make(map[string]string)
+	for _, s := range services {
+		sm[s.ID] = s.Spec.Name
+	}
+
+	report := make([]NetworkReport, 0)
+
+	for _, n := range networks {
+		nr := NetworkReport{ID: n.ID, Name: n.Name, Services: make([]string, 0)}
+		for _, s := range services {
+			for _, na := range s.Spec.TaskTemplate.Networks {
+				if na.Target == n.ID {
+					nr.Services = append(nr.Services, sm[s.ID])
+				}
+			}
+		}
+		report = append(report, nr)
+	}
+
+	sReport := make([]ServiceReport, 0)
+
+	for _, s := range services {
+		sr := ServiceReport{Name: s.Spec.Name, Networks: make([]*NetworkReport, 0)}
+
+		for _, na := range s.Spec.TaskTemplate.Networks {
+			sr.Networks = append(sr.Networks, find(na.Target, report))
+		}
+		sReport = append(sReport, sr)
+	}
+
+	data, _ := json.Marshal(sReport)
+
+	writeResponse(w, data)
+}
+
+func find(networkId string, reports []NetworkReport) *NetworkReport {
+	for _, nr := range reports {
+		if nr.ID == networkId {
+			return &nr
+		}
+	}
+	return nil
+}
+
+type ServiceReport struct {
+	Name     string
+	Networks []*NetworkReport
+}
+
+type NetworkReport struct {
+	ID       string
+	Name     string
+	Services []string
 }
 
 func (server *EventServer) startEventSender() {

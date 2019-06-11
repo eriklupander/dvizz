@@ -3,26 +3,24 @@ package service
 import (
 	"encoding/json"
 	underscore "github.com/ahl5esoft/golang-underscore"
+	"github.com/eriklupander/dvizz/cmd"
 	"github.com/eriklupander/dvizz/internal/pkg/comms"
 	"github.com/eriklupander/dvizz/internal/pkg/model"
 	docker "github.com/fsouza/go-dockerclient"
 	"time"
 )
 
-//var filters = make(map[string][]string)
-//var lastNodes []model.DNode
-//var eventServer comms.IEventServer
-
 type Publisher struct {
 	filters     map[string][]string
 	lastNodes   []model.DNode
 	eventServer comms.IEventServer
+	config      *cmd.GlobalConfiguration
 }
 
-func NewPublisher(eventServer comms.IEventServer) *Publisher {
+func NewPublisher(eventServer comms.IEventServer, config *cmd.GlobalConfiguration) *Publisher {
 	f := make(map[string][]string)
 	f["desired-state"] = []string{"running"}
-	return &Publisher{filters: f, eventServer: eventServer}
+	return &Publisher{filters: f, eventServer: eventServer, config: config}
 }
 
 /**
@@ -32,7 +30,7 @@ func (p *Publisher) PublishNodes(client *docker.Client) {
 	tmp, _ := client.ListNodes(docker.ListNodesOptions{})
 	p.lastNodes = convNodes(tmp)
 	for {
-		time.Sleep(time.Second * 5)
+		time.Sleep(time.Second * time.Duration(p.config.NodePoll))
 		tmp2, _ := client.ListNodes(docker.ListNodesOptions{})
 		currentNodes := convNodes(tmp2)
 		p.processNodeListing(currentNodes)
@@ -80,7 +78,7 @@ func (p *Publisher) PublishServices(client *docker.Client) {
 	services, _ := client.ListServices(docker.ListServicesOptions{})
 	lastServices := convServices(services)
 	for {
-		time.Sleep(time.Second * 1)
+		time.Sleep(time.Second * time.Duration(p.config.ServicePoll))
 
 		tmp, _ := client.ListServices(docker.ListServicesOptions{})
 
@@ -125,7 +123,7 @@ func (p *Publisher) PublishTasks(client *docker.Client) {
 	tasks, _ := client.ListTasks(docker.ListTasksOptions{Filters: p.filters})
 	lastTasks := convTasks(tasks)
 	for {
-		time.Sleep(time.Second * 1)
+		time.Sleep(time.Second * time.Duration(p.config.TaskPoll))
 
 		tmp, _ := client.ListTasks(docker.ListTasksOptions{Filters: p.filters})
 

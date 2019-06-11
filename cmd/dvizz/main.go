@@ -24,18 +24,77 @@ SOFTWARE.
 package main
 
 import (
+	"fmt"
+	"github.com/containous/flaeg"
+	"github.com/containous/flaeg/parse"
 	"github.com/eriklupander/dvizz/cmd"
 	"github.com/eriklupander/dvizz/internal/pkg/comms"
 	"github.com/eriklupander/dvizz/internal/pkg/service"
 	docker "github.com/fsouza/go-dockerclient"
+	"github.com/ogier/pflag"
 	"github.com/sirupsen/logrus"
 	fmtlog "log"
+	"os"
+	"reflect"
 	"strings"
 	"sync"
 )
 
+type dvizzConfiguration struct {
+	cmd.GlobalConfiguration
+}
+
+func defaultDvizzPointersConfiguration() *dvizzConfiguration {
+	return &dvizzConfiguration{}
+}
+
+func defaultDvizzConfiguration() *dvizzConfiguration {
+	return &dvizzConfiguration{
+		GlobalConfiguration: *cmd.DefaultConfiguration(),
+	}
+}
+
 func main() {
-	configureLogging(cmd.DefaultConfiguration())
+	defaultConfiguration := defaultDvizzConfiguration()
+	defaultPointersConfiguration := defaultDvizzPointersConfiguration()
+
+	mainCommand := &flaeg.Command{
+		Name:                  "dvizz",
+		Description:           "dvizz main process. Set DOCKER_HOST env var if connecting to a non-local Docker Swarm cluster",
+		Config:                defaultConfiguration,
+		DefaultPointersConfig: defaultPointersConfiguration,
+		Run: func() error {
+			run(defaultConfiguration)
+			return nil
+		},
+	}
+
+	f := flaeg.New(mainCommand, os.Args[1:])
+	f.AddParser(reflect.TypeOf([]string{}), &parse.SliceStrings{})
+
+	usedCmd, err := f.GetCommand()
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+
+	if _, err := f.Parse(usedCmd); err != nil {
+		if err == pflag.ErrHelp {
+			os.Exit(0)
+		}
+		fmt.Printf("Error parsing command: %s\n", err)
+		os.Exit(1)
+	}
+
+	if err := f.Run(); err != nil {
+		fmt.Println(err)
+		os.Exit(-1)
+	}
+	os.Exit(0)
+}
+
+func run(cfg *dvizzConfiguration) {
+	configureLogging(cfg)
 	logrus.Println("Starting dvizz!")
 	dockerClient, err := docker.NewClientFromEnv()
 	if err != nil {
@@ -45,16 +104,16 @@ func main() {
 	eventServer := &comms.EventServer{Client: dockerClient}
 	go eventServer.InitializeEventSystem()
 
-	publisher := service.NewPublisher(eventServer)
+	publisher := service.NewPublisher(eventServer, &cfg.GlobalConfiguration)
 
 	go publisher.PublishTasks(dockerClient)
-	logrus.Println("Initialized publishTasks")
+	logrus.Infof("Initialized publishTasks, will poll every %v seconds", cfg.TaskPoll)
 
 	go publisher.PublishServices(dockerClient)
-	logrus.Println("Initialized publishServices")
+	logrus.Infof("Initialized publishServices, will poll every %v seconds", cfg.ServicePoll)
 
 	go publisher.PublishNodes(dockerClient)
-	logrus.Println("Initialized publishNodes")
+	logrus.Infof("Initialized publishNodes, will poll every %v seconds", cfg.NodePoll)
 
 	// Block...
 	logrus.Println("Waiting at block...")
@@ -65,7 +124,7 @@ func main() {
 }
 
 // ConfigureLogging Configure logging for all cmd.
-func configureLogging(configuration *cmd.GlobalConfiguration) {
+func configureLogging(configuration *dvizzConfiguration) {
 	// configure default log flags
 	fmtlog.SetFlags(fmtlog.Lshortfile | fmtlog.LstdFlags)
 	// configure log level

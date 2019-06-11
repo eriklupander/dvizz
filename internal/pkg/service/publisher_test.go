@@ -2,6 +2,7 @@ package service
 
 import (
 	"fmt"
+	"github.com/eriklupander/dvizz/cmd"
 	"github.com/eriklupander/dvizz/internal/pkg/comms/mock_comms"
 	. "github.com/eriklupander/dvizz/internal/pkg/model"
 	"github.com/golang/mock/gomock"
@@ -15,7 +16,7 @@ func TestProcessOneNodeAdded(t *testing.T) {
 	mockEventServer := mock_comms.NewMockIEventServer(ctrl)
 	mockEventServer.EXPECT().AddEventToSendQueue(gomock.Any()).Times(1)
 
-	p := NewPublisher(mockEventServer)
+	p := NewPublisher(mockEventServer, cmd.DefaultConfiguration())
 
 	Convey("Given", t, func() {
 		// Start state, start with two nodes.
@@ -37,7 +38,7 @@ func TestProcessOneNodeRemoved(t *testing.T) {
 	mockEventServer := mock_comms.NewMockIEventServer(ctrl)
 	mockEventServer.EXPECT().AddEventToSendQueue(gomock.Any()).Times(1)
 
-	p := NewPublisher(mockEventServer)
+	p := NewPublisher(mockEventServer, cmd.DefaultConfiguration())
 
 	Convey("Given", t, func() {
 		// Start state, start with two nodes.
@@ -58,7 +59,7 @@ func TestProcessOneNodeRemovedTwoAdded(t *testing.T) {
 	mockEventServer := mock_comms.NewMockIEventServer(ctrl)
 	mockEventServer.EXPECT().AddEventToSendQueue(gomock.Any()).Times(3)
 
-	p := NewPublisher(mockEventServer)
+	p := NewPublisher(mockEventServer, cmd.DefaultConfiguration())
 
 	Convey("Given", t, func() {
 
