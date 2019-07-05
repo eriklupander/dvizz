@@ -265,7 +265,7 @@ func (server *EventServer) pinger() {
 		time.Sleep(time.Second * 5)
 		deletes := make([]int, 0)
 		for index, wsConn := range server.connectionRegistry {
-			err := wsConn.WriteMessage(1, []byte("PING"))
+			err := wsConn.WriteMessage(1, []byte(`{"msg":"PING"}`))
 			if err != nil {
 				// Detected disconnected channel. Need to clean up.
 				err := wsConn.Close()

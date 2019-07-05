@@ -65,13 +65,13 @@ circle.container.shutdown {
 }
 
 text {
-  font: 16px sans-serif;
+  font: 10px sans-serif;
   pointer-events: none;
   /* text-shadow: 0 1px 0 #fff, 1px 0 0 #fff, 0 -1px 0 #fff, -1px 0 0 #fff; */
 }
 
 text.two {
-  font: 10px sans-serif;
+  font: 8px sans-serif;
 }
 text.three {
   font: 10px sans-serif;

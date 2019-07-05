@@ -9,7 +9,24 @@
     <script src="js/d3/d3.min.js"></script>
 </head>
 <body>
-<script>
+<script language="JavaScript">
+    var urlParams = new URLSearchParams(window.location.search);
+    var scale = urlParams.get('scale');
+    if (typeof scale === 'undefined' || scale === null) {
+        scale = 1.0
+    }
+    var linkDistance = 120*scale;
+    var chargeDistance = -1200*scale;
+    var serviceRefX = 28 * scale;
+    var generalRefX = 48 * scale;
+    var markerWidth = 6 * scale;
+    var markerHeight = 6 * scale;
+
+    var undefinedNodeSize = 10 * scale;
+    var nodeNodeSize = 40 * scale;
+    var serviceNodeSize = 20 * scale;
+    var containerNodeSize = 10 * scale;
+
     (function () {
         /* true : create single global service nodes
            false: create one service node per service and node */
@@ -47,8 +64,8 @@
         var force = d3.layout.force()
             .nodes(nodes)
             .links(links)
-            .linkDistance(120)
-            .charge(-1200)
+            .linkDistance(linkDistance)
+            .charge(chargeDistance)
             .on("tick", tick);
 
         // add an SVG element inside the DOM's BODY element
@@ -69,19 +86,21 @@
                 .attr("id", function (d) {
                     return d;
                 })
-                .attr("viewBox", "-5 -5 10 10")
+                //.attr("viewBox", "-5 -5 10 10")
                 .attr("refX", function (d) {
                     if (d === 'serviceinstance') {
-                        return 28;
+                        return serviceRefX;
                     }
-                    return 48;
+                    return generalRefX;
                 })              // 28 or 48
                 .attr("refY", 0) //-3)
-                .attr("markerWidth", 6)
-                .attr("markerHeight", 6)
+                .attr("markerWidth", markerWidth)
+                .attr("markerHeight", markerHeight)
                 .attr("orient", "auto")
-                .append("path")
-                .attr("d", "M 0,0 m -5,-5 L 5,0 L -5,5 Z");    // M0,-5L10,0L0,5
+               // .append("path")
+
+                // Original: M 0,0 m -5,-5 L 5,0 L -5,5 Z
+               // .attr("d", "M 0,0 m -5,-5 L 5,0 L -5,5 Z");    // M0,-5L10,0L0,5 // These are the arrows
 
             // First update the links...
             var link_update = svg.selectAll(".link").data(
@@ -134,18 +153,14 @@
 
             g.append("text")
                 .attr("class", "one")
-                //.attr("x", 0)
-                //.attr("y", 12)  // 31em
                 .attr("text-anchor", "center")
 
-                    .text(function (d) {
+                .text(function (d) {
                     return d.name;
                 });
 
             g.append("text")
                 .attr("class", "two")
-                //.attr("x", 16)
-                //.attr("y", 24)  // 31em
                 .text(function (d) {
                     if (d.nodetype === 'container') {
                         return "network: " + d.networks;
@@ -157,8 +172,6 @@
 
             g.append("text")
                 .attr("class", "three")
-                //.attr("x", 16)
-                //.attr("y", 36)  // 31em
                 .text(function (d) {
                     if (d.nodetype === 'node') {
                         return "Memory: " + d.memory + " mb";
@@ -175,15 +188,15 @@
 
         function sizeFromType(d) {
             if (typeof d.nodetype === 'undefined') {
-                return 10;
+                return undefinedNodeSize;
             }
             switch (d.nodetype) {
                 case 'node':
-                    return 40;
+                    return nodeNodeSize;
                 case 'service':
-                    return 20;
+                    return serviceNodeSize;
                 case 'container':
-                    return 10;
+                    return containerNodeSize;
             }
         }
 
@@ -232,21 +245,21 @@
                     return d.x;
                 })
                 .attr("y", function (d) {
-                    return d.y - 16;
+                    return d.y - (16);
                 });
             svg.selectAll(".two")
                 .attr("x", function (d) {
-                    return d.x + 16;
+                    return d.x + (16);
                 })
                 .attr("y", function (d) {
                     return d.y + 0;
                 });
             svg.selectAll(".three")
                 .attr("x", function (d) {
-                    return d.x + 16;
+                    return d.x + (16);
                 })
                 .attr("y", function (d) {
-                    return d.y + 12;
+                    return d.y + (12);
                 });
 
         }
@@ -310,7 +323,7 @@
                             var networks = [];
                             for (var x = 0; x < item.NetworksAttachments.length; x++) {
                                 var na = item.NetworksAttachments[x];
-                                networks.push({"id":na.Network.ID, "name": na.Network.Spec.Name});
+                                networks.push({"id": na.Network.ID, "name": na.Network.Spec.Name});
                             }
 
                             tasks.push({
@@ -508,7 +521,9 @@
         ws = new WebSocket("ws://" + window.location.host + window.location.pathname + "start");
         ws.onmessage = function (e) {
             var evt = JSON.parse(e.data);
-            console.log(e.data);
+            if (e.msg === 'PING') {
+                return;
+            }
             handleWebSocketMessage(evt);
         };
 

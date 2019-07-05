@@ -7,6 +7,11 @@
 Inspired by the excellent [ManoMarks/docker-swarm-visualizer](https://github.com/ManoMarks/docker-swarm-visualizer), Dvizz provides an alternate way to render your Docker Swarm nodes, services and tasks using the D3 [Force Layout](https://github.com/d3/d3-3.x-api-reference/blob/master/Force-Layout.md).
 
 ### Changes
+
+2019-06-11
+- Uses [flaeg](github.com/containous/flaeg) for command-line arg parsing
+- Poll intervals can now be specified as program args. 
+
 2019-06-07
 - Uses go modules
 - Resolved dependency hell with Sirupsen vs sirupsen
@@ -49,23 +54,23 @@ Build an linux/amd64 binary (on OS X, change "darwin" to "windows" or whatever i
 
     export GOOS=linux
     export CGO_ENABLED=0
-    go build -o dvizz-linux-amd64
+    go build -o dvizz-linux-amd64 cmd/dvizz/main.go
     export GOOS=darwin
+    
+Or use the Makefile:
 
-The [Dockerfile](Dockerfile) builds a docker image using [multi-stage builds](https://docs.docker.com/engine/userguide/eng-image/multistage-build/).
+    make dvizz
+
+The [Dockerfile](docker/Dockerfile) builds a docker image using [multi-stage builds](https://docs.docker.com/engine/userguide/eng-image/multistage-build/). 
+
 There is no need to install _go_ and _bower_ for building the docker image.
-
-There a *Makefile* and another [Dockerfile](Dockerfile.dev) for local development.
-You can use `make all` to build dvizz and `make docker` to create a docker image
-from the builds. This is crucial faster than multi-stage build.
 
 ### Running on Docker Swarm mode
 Dvizz must be started in a Docker container running on a Swarm Manager node. I run it as a service using a _docker service create_ command. 
 
 1.) Build locally (as described above) using the Dockerfile and specify a tag, for example _someprefix/dvizz_.
 
-
-    docker build -t someprefix/dvizz .
+    make build
 
 2.) Run a _docker service create_ command. 
 
