@@ -2,8 +2,6 @@
 
 [![CircleCI](https://circleci.com/gh/eriklupander/dvizz/tree/master.svg?style=svg)](https://circleci.com/gh/eriklupander/dvizz/tree/master)
 
-**NOTE!!** Dvizz is currently ongoing a significant rewrite to use Go modules, more idiomatic Go code etc and may not be possible to build for a while.
-
 Inspired by the excellent [ManoMarks/docker-swarm-visualizer](https://github.com/ManoMarks/docker-swarm-visualizer), Dvizz provides an alternate way to render your Docker Swarm nodes, services and tasks using the D3 [Force Layout](https://github.com/d3/d3-3.x-api-reference/blob/master/Force-Layout.md).
 
 ### Changes
